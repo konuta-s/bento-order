@@ -1,0 +1,2734 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お弁当注文システム</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --radius: 12px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI','Noto Sans JP',Arial,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── NAV ── */
+    nav { background: #1e3a5f; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .nav-inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; height: 56px; gap: 4px; }
+    .nav-brand { font-weight: 800; font-size: 17px; color: #fff; margin-right: auto; white-space: nowrap; letter-spacing: -0.01em; }
+    .nav-brand span { opacity: .7; font-weight: 400; font-size: 13px; margin-left: 6px; }
+    .nav-btn { padding: 7px 13px; border-radius: 8px; border: none; background: transparent; color: rgba(255,255,255,0.65); cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; font-family: inherit; white-space: nowrap; }
+    .nav-btn:hover  { background: rgba(255,255,255,0.12); color: #fff; }
+    .nav-btn.active { background: rgba(255,255,255,0.2); color: #fff; font-weight: 700; }
+
+    /* ── LAYOUT ── */
+    main { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn .15s ease; }
+    @keyframes fadeIn { from { opacity:.6; transform:translateY(4px) } to { opacity:1; transform:none } }
+
+    /* ── CARD ── */
+    .card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+    .card + .card { margin-top: 16px; }
+    h2 { font-size: 20px; font-weight: 800; margin-bottom: 20px; color: var(--text); }
+    h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+
+    /* ── FORM ── */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+    select, input[type="date"], textarea {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 15px; color: var(--text); background: white; font-family: inherit; transition: border-color .15s;
+    }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    textarea { resize: vertical; min-height: 76px; }
+
+    /* ── MEAL SECTION ── */
+    .meal-section { border: 1.5px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 14px; }
+    .meal-header  { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .meal-badge   { padding: 5px 16px; border-radius: 100px; font-size: 14px; font-weight: 700; }
+    .badge-lunch  { background: #fef3c7; color: #92400e; }
+    .badge-dinner { background: #ede9fe; color: #5b21b6; }
+    .meal-total   { font-size: 16px; font-weight: 700; color: var(--primary); margin-left: auto; }
+    .size-grid    { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .size-item    { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .size-label   { font-size: 15px; font-weight: 700; color: var(--text); }
+    .qty-ctrl { display: flex; align-items: center; gap: 6px; }
+    .qty-btn {
+      width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: white; font-size: 20px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all .15s; color: var(--text); line-height: 1; flex-shrink: 0;
+    }
+    .qty-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .qty-num {
+      width: 52px; height: 36px; text-align: center; padding: 0; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 20px; font-weight: 700; font-family: inherit; color: var(--text);
+    }
+    .qty-num:focus { outline: none; border-color: var(--primary); }
+
+    /* ── BUTTON ── */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 22px; border-radius: 9px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .15s; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover  { background: #1d4ed8; }
+    .btn-danger  { background: var(--danger); color: white; }
+    .btn-danger:hover   { background: #b91c1c; }
+    .btn-ghost   { background: var(--bg); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-ghost:hover    { background: var(--border); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover  { background: #15803d; }
+    .btn-warn    { background: #f59e0b; color: white; }
+    .btn-warn:hover     { background: #d97706; }
+    .btn-full { width: 100%; }
+    .btn-sm   { padding: 6px 12px; font-size: 13px; }
+    .btn-xs   { padding: 4px 9px; font-size: 12px; border-radius: 6px; }
+
+    /* ── NOTICE ── */
+    .notice { padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 14px; color: #166534; margin-bottom: 16px; display: none; }
+
+    /* ══════════════════════════════════
+       ── ADMIN ──
+    ══════════════════════════════════ */
+    .date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .date-arrow { width: 38px; height: 38px; border-radius: 8px; border: 1.5px solid var(--border); background: white; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .date-arrow:hover { border-color: var(--primary); color: var(--primary); }
+    .date-title { font-size: 19px; font-weight: 800; color: var(--text); }
+
+    /* summary cards */
+    .summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .summary-box  { border-radius: 12px; padding: 18px 20px; text-align: center; color: white; }
+    .s-lunch  { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+    .s-dinner { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+    .s-total  { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
+    .s-label  { font-size: 13px; font-weight: 700; opacity: .85; margin-bottom: 6px; letter-spacing: .03em; }
+    .s-value  { font-size: 38px; font-weight: 900; line-height: 1; }
+    .s-value span { font-size: 16px; font-weight: 600; opacity: .8; margin-left: 2px; }
+    .s-sub    { font-size: 18px; font-weight: 700; opacity: .9; margin-top: 10px; letter-spacing: .02em; }
+
+    /* admin table */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+
+    /* header rows */
+    .th-facility { background: #334155; color: #fff; padding: 10px 14px; font-size: 13px; font-weight: 700; text-align: left; border: 1px solid #475569; white-space: nowrap; }
+    .th-lunch    { background: #92400e; color: #fff; padding: 10px 14px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid #78350f; white-space: nowrap; }
+    .th-dinner   { background: #4c1d95; color: #fff; padding: 10px 14px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid #3b0764; white-space: nowrap; }
+    .th-sub      { background: #1e3a5f; color: #fff; padding: 10px 14px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid #1e3a5f; }
+    .th-act      { background: #334155; color: #fff; padding: 10px 10px; font-size: 12px; font-weight: 700; text-align: center; border: 1px solid #475569; white-space: nowrap; }
+    .th-size     { background: #fef3c7; color: #78350f; padding: 8px 10px; font-size: 12px; font-weight: 700; text-align: center; border: 1px solid #fde68a; }
+    .th-size-d   { background: #ede9fe; color: #4c1d95; padding: 8px 10px; font-size: 12px; font-weight: 700; text-align: center; border: 1px solid #ddd6fe; }
+    .th-calc     { background: #fef9c3; color: #78350f; padding: 8px 10px; font-size: 12px; font-weight: 700; text-align: center; border: 1px solid #fde68a; }
+    .th-calc-d   { background: #f5f3ff; color: #4c1d95; padding: 8px 10px; font-size: 12px; font-weight: 700; text-align: center; border: 1px solid #ddd6fe; }
+
+    /* body rows */
+    tbody tr:nth-child(odd)  td { background: #ffffff; }
+    tbody tr:nth-child(even) td { background: #f8fafc; }
+    tbody tr:hover td { background: #eff6ff !important; }
+    td { padding: 11px 12px; border: 1px solid #e9eef5; text-align: center; vertical-align: middle; font-size: 16px; font-weight: 500; color: var(--text); transition: background .1s; }
+    .td-name { font-weight: 800; text-align: left !important; white-space: nowrap; font-size: 15px; min-width: 100px; }
+
+    /* cell color tints */
+    .td-l  { background: #fffbeb !important; color: #78350f; }
+    .td-ls { background: #fef3c7 !important; font-weight: 700; font-size: 17px; color: #92400e; }
+    .td-d  { background: #faf5ff !important; color: #4c1d95; }
+    .td-ds { background: #ede9fe !important; font-weight: 700; font-size: 17px; color: #5b21b6; }
+    tbody tr:hover .td-l  { background: #fff8d6 !important; }
+    tbody tr:hover .td-ls { background: #fde68a !important; }
+    tbody tr:hover .td-d  { background: #f3ebff !important; }
+    tbody tr:hover .td-ds { background: #ddd6fe !important; }
+
+    /* allergy row highlight */
+
+    /* special items section */
+    .special-checks { display: flex; flex-direction: column; gap: 10px; }
+    .special-item { border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .check-label { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; font-weight: 700; cursor: pointer; user-select: none; background: #f8fafc; }
+    .check-label input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary); flex-shrink: 0; }
+    .special-detail { padding: 14px 16px; background: white; border-top: 1.5px solid var(--border); }
+    .special-detail input[type="text"], .special-detail textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--text); margin-bottom: 12px; }
+    .special-detail textarea { min-height: 60px; resize: vertical; }
+    .special-detail input[type="text"]:focus, .special-detail textarea:focus { outline: none; border-color: var(--primary); }
+    .special-size-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 8px; }
+    .special-size-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .special-size-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .special-size-cell span { font-size: 14px; font-weight: 700; color: var(--text); }
+    .special-size-cell .qty-num { width: 64px; font-size: 18px; }
+    .size-price { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+    .special-meal-block { margin-bottom: 8px; }
+    .meal-mini-label { display: inline-block; font-size: 13px; font-weight: 700; margin-bottom: 6px; padding: 2px 10px; border-radius: 100px; }
+    .meal-mini-lunch  { background: #fef3c7; color: #92400e; }
+    .meal-mini-dinner { background: #ede9fe; color: #5b21b6; }
+    .allergy-row { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #fef9f9; border: 1.5px solid #fecaca; border-radius: 8px; margin-bottom: 8px; }
+    .allergy-row-header { display: flex; align-items: center; gap: 8px; }
+    .allergy-row-header input[type="text"] { flex: 1; margin-bottom: 0 !important; }
+    .allergy-row-del { flex-shrink: 0; width: 30px; height: 30px; border-radius: 6px; border: none; background: #fee2e2; color: #dc2626; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .allergy-row-del:hover { background: #fca5a5; }
+    .no-order { color: #94a3b8; font-size: 14px; font-style: italic; }
+
+    /* badges */
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 700; vertical-align: middle; margin-left: 4px; white-space: nowrap; }
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+
+    /* tfoot */
+    tfoot td { background: #1e3a5f !important; color: #fff; font-weight: 800; font-size: 16px; border-color: #1e3a5f; }
+    tfoot .td-ls, tfoot .td-ds { background: #1e3a5f !important; color: #fde68a; }
+    tfoot .td-l,  tfoot .td-d  { background: #1e3a5f !important; color: #c4b5fd; }
+
+    /* legend */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--muted); align-items: center; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+
+    /* ══════════════════════════════════
+       ── HISTORY ──
+    ══════════════════════════════════ */
+    /* tabs */
+    .h-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+    .h-tab  { padding: 9px 18px; border: none; background: none; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; font-family: inherit; border-radius: 6px 6px 0 0; }
+    .h-tab:hover  { color: var(--text); background: var(--bg); }
+    .h-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-light); }
+    .h-panel { display: none; }
+    .h-panel.active { display: block; }
+
+    /* list */
+    .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+    .filter-bar select, .filter-bar input[type="date"] { width: auto; min-width: 110px; font-size: 14px; padding: 8px 10px; }
+    .hist-item { background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 10px; }
+    .hist-header   { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .hist-facility { font-weight: 700; font-size: 16px; }
+    .hist-date     { font-size: 14px; color: var(--muted); }
+    .hist-tags     { display: flex; gap: 10px; flex-wrap: wrap; }
+    .hist-tag      { padding: 6px 16px; border-radius: 100px; font-size: 14px; font-weight: 600; }
+    .tag-lunch     { background: #fef3c7; color: #92400e; }
+    .tag-dinner    { background: #ede9fe; color: #5b21b6; }
+    .allergy-note  { margin-top: 10px; padding: 10px 14px; background: #fef2f2; border-radius: 8px; font-size: 14px; color: #b91c1c; border: 1px solid #fecaca; font-weight: 500; }
+    .empty-state   { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty-icon    { font-size: 44px; margin-bottom: 12px; }
+
+    /* monthly output */
+    .month-ctrl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .month-ctrl input[type="month"] { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; font-family: inherit; }
+    .month-ctrl input[type="month"]:focus { outline: none; border-color: var(--primary); }
+    .month-summary-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
+    .month-summary-box { background: #f8fafc; border: 1.5px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+    .msb-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+    .msb-value { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+    .msb-value span { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .msb-sub   { font-size: 12px; color: var(--muted); margin-top: 5px; }
+    .month-tbl-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .month-tbl { width: 100%; border-collapse: collapse; min-width: 700px; font-size: 14px; }
+    .month-tbl th { background: #334155; color: #fff; padding: 9px 12px; text-align: center; border: 1px solid #475569; font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .month-tbl th:first-child { text-align: left; }
+    .month-tbl td { padding: 9px 12px; border: 1px solid #e9eef5; text-align: center; }
+    .month-tbl td:first-child { font-weight: 700; text-align: left; white-space: nowrap; }
+    .month-tbl tr:nth-child(odd) td  { background: #fff; }
+    .month-tbl tr:nth-child(even) td { background: #f8fafc; }
+    .month-tbl tfoot td { background: #1e3a5f !important; color: #fff; font-weight: 700; }
+    .export-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+
+    /* stats */
+    .stats-ctrl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .stats-ctrl input[type="month"] { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; font-family: inherit; }
+    .stats-section { margin-bottom: 28px; }
+    .stats-section-title { font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .stats-tbl-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    .stats-tbl { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 14px; }
+    .stats-tbl th { background: #1e3a5f; color: #fff; padding: 9px 14px; text-align: center; border: 1px solid #2d4a6b; font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .stats-tbl th:first-child { text-align: left; min-width: 90px; }
+    .stats-tbl td { padding: 10px 14px; border: 1px solid #e9eef5; text-align: center; font-size: 15px; font-weight: 500; }
+    .stats-tbl td:first-child { font-weight: 700; text-align: left; }
+    .stats-tbl tr:nth-child(odd)  td { background: #fff; }
+    .stats-tbl tr:nth-child(even) td { background: #f8fafc; }
+    .stats-tbl tfoot td { background: #334155 !important; color: #fff; font-weight: 700; }
+    .stats-tbl .cell-l  { color: #92400e; background: #fffbeb !important; }
+    .stats-tbl .cell-d  { color: #4c1d95; background: #faf5ff !important; }
+    .stats-tbl .cell-hi { font-weight: 800; color: var(--primary); }
+    .stats-period { font-size: 13px; color: var(--muted); margin-bottom: 16px; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; }
+    .size-bar-wrap { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+    .size-bar-card { border: 1.5px solid var(--border); border-radius: 10px; padding: 16px; background: white; }
+    .size-bar-title { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 10px; text-align: center; }
+    .size-bar-value { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    .size-bar-sub   { font-size: 12px; color: var(--muted); text-align: center; }
+    .size-bar-track { height: 8px; background: #e2e8f0; border-radius: 100px; overflow: hidden; margin-top: 8px; }
+    .size-bar-fill  { height: 100%; border-radius: 100px; transition: width .4s; }
+
+    /* ══════════════════════════════════
+       ── 定期注文フォーム ──
+    ══════════════════════════════════ */
+    .setting-intro { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 14px; color: #1e40af; line-height: 1.75; }
+    .setting-grid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
+    .setting-card  { border: 1.5px solid var(--border); border-radius: 12px; padding: 20px; }
+    .setting-card.has-tmpl { border-color: #86efac; }
+    .setting-card-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .setting-facility   { font-size: 17px; font-weight: 800; }
+    .tmpl-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 100px; }
+    .tmpl-badge.set   { background: #d1fae5; color: #065f46; }
+    .tmpl-badge.unset { background: #f1f5f9; color: var(--muted); }
+
+    /* day-of-week selector */
+    .day-selector { margin-bottom: 14px; }
+    .day-selector-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+    .day-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .day-chip  { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--border); background: white; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; color: var(--muted); }
+    .day-chip:hover   { border-color: var(--primary); color: var(--primary); }
+    .day-chip.active  { background: var(--primary); border-color: var(--primary); color: white; }
+    .day-chip.sat  { }
+    .day-chip.sun  { }
+    .day-chip.active.sat { background: #0891b2; border-color: #0891b2; }
+    .day-chip.active.sun { background: #dc2626; border-color: #dc2626; }
+
+    /* setting summary */
+    .setting-summary { background: #f8fafc; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--muted); margin-bottom: 14px; border: 1px solid var(--border); line-height: 2; }
+    .setting-summary strong { color: var(--text); }
+
+    /* setting size inputs */
+    .setting-meal       { margin-bottom: 12px; }
+    .setting-meal-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .setting-size-row   { display: flex; gap: 8px; }
+    .setting-size-item  { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .setting-size-lbl   { font-size: 12px; font-weight: 700; color: var(--muted); }
+    .setting-qty-ctrl   { display: flex; align-items: center; gap: 3px; }
+    .setting-qty-btn    { width: 28px; height: 28px; border-radius: 6px; border: 1.5px solid var(--border); background: white; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; color: var(--text); line-height: 1; flex-shrink: 0; }
+    .setting-qty-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .setting-qty-num    { width: 40px; height: 28px; text-align: center; padding: 0; border: 1.5px solid var(--border); border-radius: 6px; font-size: 15px; font-weight: 700; font-family: inherit; color: var(--text); background: white; }
+    .setting-qty-num:focus { outline: none; border-color: var(--primary); }
+    .setting-actions    { display: flex; gap: 8px; margin-top: 14px; }
+    .divider            { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* ── MODAL ── */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .overlay.show { display: flex; }
+    .modal { background: white; border-radius: var(--radius); padding: 28px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.3); max-height: 90vh; overflow-y: auto; }
+    .modal h3  { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .modal .sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+    .modal p   { font-size: 14px; color: var(--muted); margin-bottom: 20px; line-height: 1.65; }
+    .modal-btns { display: flex; flex-direction: column; gap: 8px; }
+    .modal-meal { border: 1.5px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+    .modal-meal-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .modal-size-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .modal-size-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .modal-size-lbl  { font-size: 13px; font-weight: 700; color: var(--muted); }
+    .modal-qty-ctrl  { display: flex; align-items: center; gap: 4px; }
+    .modal-qty-btn   { width: 30px; height: 30px; border-radius: 7px; border: 1.5px solid var(--border); background: white; font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; color: var(--text); line-height: 1; flex-shrink: 0; }
+    .modal-qty-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .modal-qty-num   { width: 44px; height: 30px; text-align: center; padding: 0; border: 1.5px solid var(--border); border-radius: 7px; font-size: 17px; font-weight: 700; font-family: inherit; color: var(--text); }
+    .modal-qty-num:focus { outline: none; border-color: var(--primary); }
+
+    /* ── TOAST ── */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: white; padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,.2); z-index: 999; transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.ok { background: var(--success); }
+    .toast.ng { background: var(--danger); }
+
+    /* ── PIN OVERLAY ── */
+    .pin-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.85); z-index: 500; display: none; align-items: center; justify-content: center; }
+    .pin-overlay.show { display: flex; }
+    .pin-box { background: white; border-radius: 16px; padding: 36px 32px; width: 340px; text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,.4); }
+    .pin-box .pin-icon { font-size: 40px; margin-bottom: 12px; }
+    .pin-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .pin-box .pin-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+    .pin-dots { display: flex; gap: 12px; justify-content: center; margin-bottom: 20px; }
+    .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); background: white; transition: all .15s; }
+    .pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+    .pin-dot.error  { background: var(--danger); border-color: var(--danger); }
+    .pin-numpad { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+    .pin-key { padding: 16px; border-radius: 10px; border: 1.5px solid var(--border); background: white; font-size: 20px; font-weight: 700; cursor: pointer; transition: all .15s; font-family: inherit; color: var(--text); }
+    .pin-key:hover  { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+    .pin-key:active { background: var(--primary); color: white; }
+    .pin-key.pin-del { font-size: 16px; color: var(--muted); }
+    .pin-key.pin-zero { grid-column: 2; }
+    .pin-error-msg { font-size: 13px; color: var(--danger); font-weight: 600; min-height: 20px; margin-bottom: 8px; }
+    .pin-cancel { font-size: 13px; color: var(--muted); cursor: pointer; text-decoration: underline; background: none; border: none; font-family: inherit; margin-top: 4px; }
+    .pin-cancel:hover { color: var(--text); }
+    /* admin lock bar */
+    .admin-lock-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; margin-bottom: 16px; font-size: 14px; color: #1e40af; }
+    .admin-lock-bar strong { font-weight: 700; }
+    /* pin change section */
+    .pin-change-section { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px; }
+
+    /* ── CORRECTION BANNER ── */
+    .correction-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; margin-bottom: 16px; font-size: 14px; color: #78350f; font-weight: 500; }
+    .correction-bar strong { color: #92400e; }
+
+    @media (max-width: 640px) {
+      /* ナビ */
+      .nav-inner    { gap: 2px; overflow-x: auto; padding: 0 8px; }
+      .nav-brand    { font-size: 14px; white-space: nowrap; }
+      .nav-brand span { display: none; }
+      .nav-btn      { padding: 5px 7px; font-size: 11px; white-space: nowrap; flex-shrink: 0; }
+
+      /* レイアウト */
+      main          { padding: 12px 8px; }
+      .card         { padding: 14px 12px; }
+      .form-row     { grid-template-columns: 1fr; gap: 10px; }
+      .setting-grid { grid-template-columns: 1fr; }
+      .summary-row  { grid-template-columns: 1fr; }
+      .s-value      { font-size: 26px; }
+
+      /* サイズ選択グリッド：縦並びに変更 */
+      .size-grid    { grid-template-columns: 1fr; gap: 8px; }
+      .size-item    { flex-direction: row; justify-content: space-between; align-items: center;
+                      background: #f8fafc; border-radius: 8px; padding: 10px 12px; }
+      .size-label   { font-size: 15px; }
+      .size-price   { font-size: 11px; display: block; color: var(--muted); }
+      .qty-btn      { width: 38px; height: 38px; font-size: 20px; }
+      .qty-num      { width: 52px; font-size: 18px; }
+
+      /* アレルギー入力 */
+      .allergy-row  { gap: 10px; }
+      .special-size-row { flex-wrap: wrap; gap: 6px; }
+      .special-size-cell{ flex: 0 0 calc(33% - 4px); }
+      .special-size-cell input { width: 100% !important; }
+
+      /* 管理テーブル：横スクロール */
+      .table-wrap   { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      #admin-tbl    { min-width: 560px; }
+
+      /* モーダル */
+      .modal-inner  { padding: 16px; margin: 12px; }
+      .modal-size-grid { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    }
+  @media print {
+    /* ── ページ設定：A4横（A3横はブラウザの印刷ダイアログで用紙変更） ── */
+    @page { size: A4 landscape; margin: 8mm; }
+
+    /* 色を画面通りに出力 */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    /* 非表示にするUI要素 */
+    nav, .admin-lock-bar, .correction-bar, .legend, .date-nav,
+    button, input[type="date"], .modal { display: none !important; }
+
+    body { background: white; font-size: 9pt; }
+    main { padding: 0; max-width: 100%; }
+
+    /* アクティブなページだけ表示 */
+    .page { display: none !important; }
+    .page.active { display: block !important; }
+
+    /* ── 管理画面：1枚印刷 ── */
+    #page-admin .card { box-shadow: none; border: none; padding: 4px 0; margin-bottom: 6px; }
+
+    /* タイトル */
+    #print-header { display: block !important; font-size: 13pt; font-weight: 800; margin-bottom: 6px; }
+
+    /* サマリーカード：コンパクトに */
+    #admin-summary { display: grid !important; gap: 5px !important; margin-bottom: 8px !important; }
+    #admin-summary .summary-box { padding: 6px 10px !important; border-radius: 6px !important; }
+    #admin-summary .s-label { font-size: 8pt !important; margin-bottom: 2px !important; }
+    #admin-summary .s-value { font-size: 18pt !important; line-height: 1 !important; }
+    #admin-summary .s-value span { font-size: 9pt !important; }
+    #admin-summary .s-sub { font-size: 7pt !important; margin-top: 2px !important; }
+
+    /* アレルギーセクション */
+    #admin-allergy-section > div { padding: 8px !important; margin-bottom: 6px !important; }
+    #admin-allergy-section .s-label, #admin-allergy-section div { font-size: 8pt !important; }
+
+    /* テーブル */
+    .table-wrap { overflow: visible; }
+    #admin-tbl { width: 100%; border-collapse: collapse; font-size: 8.5pt; min-width: unset !important; }
+    #admin-tbl th { padding: 4px 5px !important; font-size: 8pt !important; }
+    #admin-tbl td { padding: 4px 5px !important; font-size: 8.5pt !important; border: 1px solid #ccc !important; }
+    #admin-tbl .td-name { font-size: 9pt !important; font-weight: 700; white-space: nowrap; }
+    #admin-tbl .td-ls, #admin-tbl .td-ds { font-size: 10pt !important; font-weight: 700; }
+    /* 訂正ボタン列を非表示 */
+    #admin-tbl th:last-child, #admin-tbl td:last-child { display: none !important; }
+    tr.has-allergy .td-name { border-left: 3px solid #dc2626 !important; }
+
+    /* ── 履歴印刷 ── */
+    #page-history .card { box-shadow: none; border: 1px solid #e2e8f0; padding: 10px; margin-bottom: 10px; }
+    .hist-card { break-inside: avoid; }
+    .hist-tag  { display: inline-block !important; }
+  }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- ローディング画面 -->
+<div id="fb-loading" style="position:fixed;inset:0;background:#1e3a5f;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:white;">
+  <div style="font-size:56px;margin-bottom:16px;">🍱</div>
+  <div style="font-size:18px;font-weight:700;margin-bottom:6px;">お弁当注文システム</div>
+  <div style="font-size:13px;opacity:0.65;margin-bottom:28px;">データを読み込み中です...</div>
+  <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.25);border-top-color:white;border-radius:50%;animation:fbspin 0.8s linear infinite;"></div>
+  <style>@keyframes fbspin{to{transform:rotate(360deg)}}</style>
+</div>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-brand">🍱 お弁当注文システム</div>
+    <button class="nav-btn active"  onclick="showPage('order',   this)">注文フォーム</button>
+    <button class="nav-btn"         onclick="showPage('setting', this)">定期注文フォーム</button>
+    <button class="nav-btn"         onclick="showPage('menu',    this)">献立</button>
+    <button class="nav-btn"         onclick="showPage('guide',   this)">取説</button>
+    <button class="nav-btn"         onclick="requirePin(this)">管理画面</button>
+    <button class="nav-btn"         onclick="showPage('history', this)">履歴</button>
+    <button class="nav-btn"         onclick="requirePin(this,'master')">マスタ</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ═══════ 注文フォーム ═══════ -->
+  <div id="page-order" class="page active">
+    <div class="card">
+      <h2>お弁当注文フォーム</h2>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label>事業所</label>
+          <select id="f-facility" onchange="onFacilityChange()">
+            <option value="">-- 選択してください --</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>注文日</label>
+          <input type="date" id="f-date" onchange="onDateChange()">
+        </div>
+      </div>
+      <div style="height:14px"></div>
+      <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1d4ed8;font-weight:600;margin-bottom:12px;">
+        🕘 当日朝9時までにご注文ください。訂正が必要な場合はサヴァにご連絡ください。
+      </div>
+      <div class="notice" id="repeat-notice">
+        📋 この事業所は定期注文が設定されています。変更時は以降の注文に反映するか確認します。
+      </div>
+      <div class="notice" id="submitted-notice" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;display:none;">
+        🔒 この事業所・日付はすでに注文済みです。再入力はできません。<br>訂正は、サヴァに電話連絡願います。
+      </div>
+
+      <!-- イレギュラー対応 -->
+      <div id="irregular-box" style="background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:700;color:#92400e;">
+          <input type="checkbox" id="chk-irregular" onchange="onIrregularChange()" style="width:18px;height:18px;accent-color:#d97706;">
+          ⚠️ イレギュラー対応
+          <span style="font-size:12px;font-weight:500;color:#a16207;">（今日だけ通常と異なる容器で提供する場合にチェック）</span>
+        </label>
+      </div>
+
+      <div class="meal-section" id="meal-lunch">
+        <div class="meal-header">
+          <span class="meal-badge badge-lunch">☀️ 昼食</span>
+          <span id="lunch-tapper-badge" style="display:none;font-size:12px;font-weight:700;color:#0369a1;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:2px 8px;">🥡 タッパー</span>
+          <span class="meal-total" id="lunch-total-lbl"></span>
+        </div>
+        <div class="size-grid">
+          <div class="size-item" id="si-ls"><div class="size-label">半盛<span class="size-price" id="price-ls"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('ls',-1)">−</button><input class="qty-num" type="number" id="ls" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('ls',1)">＋</button></div></div>
+          <div class="size-item" id="si-lr"><div class="size-label" id="lbl-lr">普通<span class="size-price" id="price-lr"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('lr',-1)">−</button><input class="qty-num" type="number" id="lr" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('lr',1)">＋</button></div></div>
+          <div class="size-item" id="si-ll"><div class="size-label">大盛<span class="size-price" id="price-ll"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('ll',-1)">−</button><input class="qty-num" type="number" id="ll" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('ll',1)">＋</button></div></div>
+          <div class="size-item" id="si-ltap" style="display:none;border:2px dashed #f59e0b;background:#fffbeb;"><div class="size-label">🥡 タッパー<span class="size-price" id="price-ltap"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('ltap',-1)">−</button><input class="qty-num" type="number" id="ltap" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('ltap',1)">＋</button></div></div>
+        </div>
+      </div>
+
+      <div class="meal-section" id="meal-dinner">
+        <div class="meal-header">
+          <span class="meal-badge badge-dinner">🌙 夕食</span>
+          <span id="dinner-tapper-badge" style="display:none;font-size:12px;font-weight:700;color:#0369a1;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:2px 8px;">🥡 タッパー</span>
+          <span class="meal-total" id="dinner-total-lbl"></span>
+        </div>
+        <div class="size-grid">
+          <div class="size-item" id="si-ds"><div class="size-label">半盛<span class="size-price" id="price-ds"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('ds',-1)">−</button><input class="qty-num" type="number" id="ds" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('ds',1)">＋</button></div></div>
+          <div class="size-item" id="si-dr"><div class="size-label" id="lbl-dr">普通<span class="size-price" id="price-dr"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('dr',-1)">−</button><input class="qty-num" type="number" id="dr" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('dr',1)">＋</button></div></div>
+          <div class="size-item" id="si-dl"><div class="size-label">大盛<span class="size-price" id="price-dl"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('dl',-1)">−</button><input class="qty-num" type="number" id="dl" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('dl',1)">＋</button></div></div>
+          <div class="size-item" id="si-dtap" style="display:none;border:2px dashed #f59e0b;background:#fffbeb;"><div class="size-label">🥡 タッパー<span class="size-price" id="price-dtap"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('dtap',-1)">−</button><input class="qty-num" type="number" id="dtap" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('dtap',1)">＋</button></div></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>アレルギー・特記事項</label>
+        <div class="special-checks">
+
+          <!-- アレルギー -->
+          <div class="special-item">
+            <label class="check-label">
+              <input type="checkbox" id="chk-allergy" onchange="toggleSpecial('allergy')">
+              アレルギー
+            </label>
+            <div class="special-detail" id="detail-allergy" style="display:none">
+              <div id="allergy-list"></div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addAllergyRow()" style="margin-top:4px;">＋ アレルギーを追加</button>
+            </div>
+          </div>
+
+          <!-- 刻み -->
+          <div class="special-item">
+            <label class="check-label">
+              <input type="checkbox" id="chk-kizami" onchange="toggleSpecial('kizami')">
+              刻み
+            </label>
+            <div class="special-detail" id="detail-kizami" style="display:none">
+              <div class="special-meal-block">
+                <span class="meal-mini-label meal-mini-lunch">☀️ 昼食</span>
+                <div class="special-size-row">
+                  <div class="special-size-cell"><span>半盛</span><input class="qty-num" type="number" id="k-ls" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>普通</span><input class="qty-num" type="number" id="k-lr" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>大盛</span><input class="qty-num" type="number" id="k-ll" value="0" min="0"></div>
+                </div>
+              </div>
+              <div class="special-meal-block">
+                <span class="meal-mini-label meal-mini-dinner">🌙 夕食</span>
+                <div class="special-size-row">
+                  <div class="special-size-cell"><span>半盛</span><input class="qty-num" type="number" id="k-ds" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>普通</span><input class="qty-num" type="number" id="k-dr" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>大盛</span><input class="qty-num" type="number" id="k-dl" value="0" min="0"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- その他 -->
+          <div class="special-item">
+            <label class="check-label">
+              <input type="checkbox" id="chk-other" onchange="toggleSpecial('other')">
+              その他
+            </label>
+            <div class="special-detail" id="detail-other" style="display:none">
+              <textarea id="other-detail" placeholder="内容を記入してください"></textarea>
+              <div class="special-meal-block">
+                <span class="meal-mini-label meal-mini-lunch">☀️ 昼食</span>
+                <div class="special-size-row">
+                  <div class="special-size-cell"><span>半盛</span><input class="qty-num" type="number" id="o-ls" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>普通</span><input class="qty-num" type="number" id="o-lr" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>大盛</span><input class="qty-num" type="number" id="o-ll" value="0" min="0"></div>
+                </div>
+              </div>
+              <div class="special-meal-block">
+                <span class="meal-mini-label meal-mini-dinner">🌙 夕食</span>
+                <div class="special-size-row">
+                  <div class="special-size-cell"><span>半盛</span><input class="qty-num" type="number" id="o-ds" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>普通</span><input class="qty-num" type="number" id="o-dr" value="0" min="0"></div>
+                  <div class="special-size-cell"><span>大盛</span><input class="qty-num" type="number" id="o-dl" value="0" min="0"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="submitOrder()">注文を送信する</button>
+    </div>
+  </div>
+
+  <!-- ═══════ 管理画面 ═══════ -->
+  <div id="page-admin" class="page">
+    <div class="card">
+      <h2>管理画面</h2>
+
+      <div class="date-nav">
+        <button class="date-arrow" onclick="shiftDay(-1)">‹</button>
+        <span class="date-title" id="admin-date-lbl"></span>
+        <button class="date-arrow" onclick="shiftDay(1)">›</button>
+        <input type="date" id="admin-date-input" onchange="renderAdmin()" style="width:auto;font-size:14px;padding:7px 10px;margin-left:6px;">
+      </div>
+
+      <div class="summary-row" id="admin-summary"></div>
+
+      <div class="admin-lock-bar">
+        🔒 <strong>管理者モード</strong>　閲覧中
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="printAdmin()">🖨️ 印刷</button>
+          <button class="btn btn-ghost btn-sm" onclick="openPinChange()">🔑 暗証番号変更</button>
+          <button class="btn btn-ghost btn-sm" onclick="lockAdmin()">🔒 ロック</button>
+        </div>
+      </div>
+      <div class="correction-bar">
+        ✏️ <strong>訂正モード：</strong>各事業所の行の「訂正」ボタンから注文内容を修正できます。
+      </div>
+
+      <div id="print-header" style="display:none;">
+        <div style="font-size:22px;font-weight:800;margin-bottom:4px;">お弁当注文数</div>
+        <div id="print-date-lbl" style="font-size:15px;color:#555;margin-bottom:12px;"></div>
+      </div>
+
+      <div id="admin-allergy-section"></div>
+
+      <div class="table-wrap">
+        <table id="admin-tbl"></table>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><span class="badge badge-green">定期</span> テンプレートから自動反映</div>
+        <div class="legend-item"><span class="badge badge-orange">当日変更</span> この日のみ変更済み</div>
+        <div class="legend-item"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--danger);vertical-align:middle;"></span> アレルギー記載あり（左枠）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 履歴 ═══════ -->
+  <div id="page-history" class="page">
+    <div class="card">
+      <h2>注文履歴</h2>
+
+      <div class="h-tabs">
+        <button class="h-tab active" onclick="switchHTab('list',this)">📋 注文一覧</button>
+        <button class="h-tab"        onclick="switchHTab('monthly',this)">📅 月次出力</button>
+        <button class="h-tab"        onclick="switchHTab('stats',this)">📊 統計・分析</button>
+      </div>
+
+      <!-- ── 注文一覧 ── -->
+      <div id="h-panel-list" class="h-panel active">
+        <div class="filter-bar">
+          <select id="h-facility" onchange="renderHistory()"><option value="">全事業所</option></select>
+          <input type="date" id="h-from" onchange="renderHistory()">
+          <span style="color:var(--muted);">〜</span>
+          <input type="date" id="h-to" onchange="renderHistory()">
+          <button class="btn btn-ghost btn-sm" onclick="resetHistory()">リセット</button>
+        </div>
+        <div id="history-list"></div>
+      </div>
+
+      <!-- ── 月次出力 ── -->
+      <div id="h-panel-monthly" class="h-panel">
+        <div class="month-ctrl">
+          <label style="margin:0;font-size:14px;font-weight:700;color:var(--muted);">対象月</label>
+          <input type="month" id="m-month">
+          <label style="margin:0;font-size:14px;font-weight:700;color:var(--muted);">表示</label>
+          <select id="m-view" style="width:auto;font-size:14px;padding:8px 10px;">
+            <option value="">全体</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="renderMonthly()">表示</button>
+          <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">⬇ CSV出力</button>
+          <button class="btn btn-ghost btn-sm"   onclick="window.print()">🖨 印刷</button>
+        </div>
+        <div id="monthly-out"></div>
+      </div>
+
+      <!-- ── 統計・分析 ── -->
+      <div id="h-panel-stats" class="h-panel">
+        <div class="stats-ctrl">
+          <label style="margin:0;font-size:14px;font-weight:700;color:var(--muted);">集計月</label>
+          <input type="month" id="s-month">
+          <button class="btn btn-primary btn-sm" onclick="renderStats()">集計する</button>
+        </div>
+        <div id="stats-out"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ マスタ ═══════ -->
+  <div id="page-master" class="page">
+
+    <!-- 事業所管理 -->
+    <div class="card">
+      <h2>マスタ設定</h2>
+      <h3 style="margin-bottom:12px;">事業所管理</h3>
+      <div id="master-fac-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="new-fac-name" placeholder="新規事業所名" style="width:180px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;">
+          <input type="checkbox" id="new-fac-repeat" style="width:16px;height:16px;accent-color:var(--primary);"> 定期注文
+        </label>
+        <button class="btn btn-success btn-sm" onclick="addFacility()">＋ 追加</button>
+      </div>
+    </div>
+
+    <!-- 価格設定（共通） -->
+    <div class="card">
+      <h3 style="margin-bottom:8px;">価格設定（共通）</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">サイズ別単価を設定します。全事業所共通です。価格は注文フォームにも表示されます。</p>
+      <div id="master-price-area"></div>
+    </div>
+
+    <!-- 容器設定（事業所別） -->
+    <div class="card">
+      <h3 style="margin-bottom:8px;">容器設定（事業所別）</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">各事業所の昼食・夕食の容器種別を設定します。</p>
+      <div id="master-container-area" style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;"></div>
+      <div style="margin-top:20px;">
+        <button class="btn btn-primary" onclick="saveMaster()">💾 保存する</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════ 定期注文フォーム ═══════ -->
+  <div id="page-setting" class="page">
+    <div class="card">
+      <h2>定期注文フォーム</h2>
+      <div class="setting-intro">
+        📋 <strong id="repeat-fac-names"></strong> は変更がない限り毎日同じ数量が自動で反映されます。<br>
+        ・<strong>注文曜日</strong>を設定すると、その曜日のみ管理画面に自動反映されます。<br>
+        ・1日だけ数量が変わる場合は<strong>注文フォームから送信</strong>してください（「この日だけ変更」を選択）。<br>
+        　管理画面では定期テンプレートより当日入力が優先されます。
+      </div>
+      <div class="setting-grid" id="setting-grid"></div>
+    </div>
+  </div>
+
+  <!-- ═══════ 献立 ═══════ -->
+  <!-- ─── 取説ページ ─── -->
+  <div id="page-guide" class="page">
+    <div class="card" style="max-width:680px;margin:0 auto;">
+      <h2 style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px;">📖 お弁当注文の仕方</h2>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:24px;">はじめての方もご安心ください。画面の手順通りに操作するだけで注文できます。</p>
+
+      <!-- STEP 1 -->
+      <div style="display:flex;gap:14px;margin-bottom:20px;align-items:flex-start;">
+        <div style="min-width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px;">「注文フォーム」を開く</div>
+          <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;">画面上部のメニューから <strong style="color:var(--primary);">「注文フォーム」</strong> をタップ（クリック）します。<br>最初から表示されている場合はそのままでOKです。</p>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div style="display:flex;gap:14px;margin-bottom:20px;align-items:flex-start;">
+        <div style="min-width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px;">事業所・日付を確認する</div>
+          <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;">画面上部に <strong>事業所名</strong> と <strong>注文日</strong> が表示されています。<br>
+          日付は今日の日付が自動で選ばれています。別の日に注文したい場合は、日付の横の <strong>「◀ ▶」</strong> ボタンで変えてください。</p>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div style="display:flex;gap:14px;margin-bottom:20px;align-items:flex-start;">
+        <div style="min-width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px;">昼食・夕食の数を入力する</div>
+          <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;"><strong>「＋」ボタン</strong> を押すと数が増え、<strong>「－」ボタン</strong> で減ります。<br>
+          サイズは <strong>半盛・普通・大盛</strong> の3種類です。<br>
+          昼食と夕食それぞれの必要な数を入力してください。<br>
+          <span style="color:var(--muted);font-size:13px;">※ 不要な場合は「0」のままでOKです。</span></p>
+          <div style="margin-top:10px;padding:10px 14px;background:#f1f5f9;border-radius:8px;font-size:13px;color:var(--text);">
+            <div style="font-weight:700;margin-bottom:4px;">💡 サイズの目安</div>
+            <div>🍱 <strong>半盛</strong>……少食の方・食欲がない日向け</div>
+            <div>🍱 <strong>普通</strong>……一般的な量</div>
+            <div>🍱 <strong>大盛</strong>……たくさん食べたい方向け</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div style="display:flex;gap:14px;margin-bottom:20px;align-items:flex-start;">
+        <div style="min-width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px;">アレルギーや特記事項を入力する（任意）</div>
+          <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;">アレルギーや刻み食など、特別な対応が必要な方がいる場合はチェックを入れ、内容を記入してください。<br>
+          <span style="color:var(--muted);font-size:13px;">※ 特にない場合はそのままでOKです。</span></p>
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div style="display:flex;gap:14px;margin-bottom:20px;align-items:flex-start;">
+        <div style="min-width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">5</div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px;">「注文を確定する」ボタンを押す</div>
+          <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;">内容が確認できたら、画面下の <strong style="color:var(--primary);">「注文を確定する」</strong> ボタンを押して完了です。<br>
+          「注文を受け付けました」と表示されれば成功です🎉</p>
+        </div>
+      </div>
+
+      <!-- 締め切り -->
+      <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:4px;">⏰ 注文の締め切りについて</div>
+        <div style="font-size:13px;color:#78350f;line-height:1.7;">当日朝 <strong>9時まで</strong> に注文をお願いします。<br>間違えた場合や変更したい場合は、担当者にお電話かSlackでご連絡ください。</div>
+      </div>
+
+      <!-- 定期注文フォーム -->
+      <div style="border-top:1px solid var(--border);padding-top:18px;margin-bottom:24px;">
+        <h3 style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">🔁 定期注文フォームの使い方</h3>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">毎週決まった曜日に同じ数を注文する場合、あらかじめ登録しておくと自動で注文が入ります。</p>
+
+        <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:#8b5cf6;color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+          <div>
+            <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;">「定期注文フォーム」を開く</div>
+            <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;">画面上部のメニューから <strong style="color:#8b5cf6;">「定期注文フォーム」</strong> をタップします。</p>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:#8b5cf6;color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+          <div>
+            <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;">曜日を選んで数を入力する</div>
+            <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;">月曜〜日曜のタブが並んでいます。注文したい曜日をタップし、昼食・夕食それぞれの数を「＋」「－」で入力してください。<br>
+            <span style="font-size:13px;color:var(--muted);">※ 不要な曜日は「0」のままでOKです。</span></p>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:#8b5cf6;color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+          <div>
+            <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;">「定期注文を保存する」ボタンを押す</div>
+            <p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0;">入力が終わったら <strong style="color:#8b5cf6;">「定期注文を保存する」</strong> を押して完了です。以降は毎週その曜日に自動で注文が入ります。</p>
+          </div>
+        </div>
+
+        <div style="background:#f5f3ff;border-radius:10px;padding:14px 18px;">
+          <div style="font-size:14px;font-weight:800;color:#6d28d9;margin-bottom:6px;">💡 定期注文のポイント</div>
+          <ul style="font-size:13px;color:#5b21b6;line-height:1.9;margin:0;padding-left:16px;">
+            <li>定期注文はあくまで「ベース」の数です。当日の数が変わる場合は <strong>注文フォームで上書き</strong> できます。</li>
+            <li>長期休暇など注文が不要な週は、注文フォームで数を「0」にして確定してください。</li>
+            <li>定期注文の内容を変えたいときは、定期注文フォームを開いて数を修正し、再度保存してください。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Q&A -->
+      <div style="border-top:1px solid var(--border);padding-top:18px;">
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:12px;">❓ よくある質問</div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;">Q. 定期注文って何ですか？</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;">毎週同じ曜日に同じ数を注文する場合、「定期注文フォーム」で登録しておくと自動で注文が入ります。毎回入力する手間が省けて便利です。</div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;">Q. 注文を取り消したいときは？</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;">全ての数を「0」にして再度「注文を確定する」を押すか、担当者にご連絡ください。</div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;">Q. スマートフォンでも使えますか？</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;">はい、スマートフォンやタブレットのブラウザからもご利用いただけます。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-menu" class="page">
+    <div class="card" style="text-align:center;padding:60px 24px;">
+      <div style="font-size:64px;margin-bottom:16px;">🍽️</div>
+      <h2 style="font-size:26px;font-weight:900;color:var(--text);margin-bottom:10px;">献立ページ</h2>
+      <div style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#fbbf24);color:white;font-size:13px;font-weight:800;letter-spacing:.12em;padding:4px 16px;border-radius:20px;margin-bottom:24px;">COMING SOON</div>
+      <p style="color:var(--muted);font-size:15px;line-height:1.8;max-width:420px;margin:0 auto;">週間・月間の献立を登録・確認できる機能を準備中です。<br>今後のアップデートをお待ちください。</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── PIN入力オーバーレイ ─── -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-box">
+    <div class="pin-icon">🔐</div>
+    <h3 id="pin-title">管理画面</h3>
+    <div class="pin-sub" id="pin-sub">暗証番号を入力してください</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error-msg" id="pin-error"></div>
+    <div class="pin-numpad">
+      <button class="pin-key" onclick="pinInput('1')">1</button>
+      <button class="pin-key" onclick="pinInput('2')">2</button>
+      <button class="pin-key" onclick="pinInput('3')">3</button>
+      <button class="pin-key" onclick="pinInput('4')">4</button>
+      <button class="pin-key" onclick="pinInput('5')">5</button>
+      <button class="pin-key" onclick="pinInput('6')">6</button>
+      <button class="pin-key" onclick="pinInput('7')">7</button>
+      <button class="pin-key" onclick="pinInput('8')">8</button>
+      <button class="pin-key" onclick="pinInput('9')">9</button>
+      <button class="pin-key pin-del" onclick="pinDel()">⌫</button>
+      <button class="pin-key pin-zero" onclick="pinInput('0')">0</button>
+      <button class="pin-key" style="visibility:hidden"></button>
+    </div>
+    <button class="pin-cancel" onclick="closePinOverlay()">キャンセル</button>
+  </div>
+</div>
+
+<!-- ─── 暗証番号変更モーダル ─── -->
+<div class="overlay" id="modal-pin-change">
+  <div class="modal" style="max-width:360px;">
+    <h3>暗証番号の変更</h3>
+    <p>現在の暗証番号を確認後、新しい4桁の番号を設定します。</p>
+    <div class="form-group">
+      <label>現在の暗証番号</label>
+      <input type="password" id="pc-current" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="現在の4桁" style="letter-spacing:.3em;font-size:20px;text-align:center;">
+    </div>
+    <div class="form-group">
+      <label>新しい暗証番号（4桁）</label>
+      <input type="password" id="pc-new" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="新しい4桁" style="letter-spacing:.3em;font-size:20px;text-align:center;">
+    </div>
+    <div class="form-group">
+      <label>新しい暗証番号（確認）</label>
+      <input type="password" id="pc-confirm" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="もう一度入力" style="letter-spacing:.3em;font-size:20px;text-align:center;">
+    </div>
+    <div id="pc-error" style="font-size:13px;color:var(--danger);font-weight:600;min-height:18px;margin-bottom:12px;"></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="savePin()">変更する</button>
+      <button class="btn btn-ghost"   onclick="document.getElementById('modal-pin-change').classList.remove('show')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Modal: 定期注文フォーム送信時 ─── -->
+<div class="overlay" id="modal-type">
+  <div class="modal">
+    <h3>注文の変更</h3>
+    <p>この事業所は定期注文が設定されています。<br>どちらの方法で変更しますか？</p>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="doSave('template')">以降の注文もすべて変更する</button>
+      <button class="btn btn-warn"    onclick="doSave('once')">この日だけ変更する</button>
+      <button class="btn btn-ghost"   onclick="document.getElementById('modal-type').classList.remove('show')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Modal: 管理画面 訂正 ─── -->
+<div class="overlay" id="modal-correct">
+  <div class="modal">
+    <h3 id="mc-title">注文の訂正</h3>
+    <div class="sub" id="mc-sub"></div>
+    <div class="modal-meal">
+      <div class="modal-meal-hd"><span class="meal-badge badge-lunch">☀️ 昼食</span><span id="mc-lunch-lbl" style="font-size:14px;font-weight:700;color:var(--primary);margin-left:auto;"></span></div>
+      <div class="modal-size-grid">
+        <div class="modal-size-item"><div class="modal-size-lbl">半盛</div><div class="modal-qty-ctrl"><button class="modal-qty-btn" onclick="madj('mc-ls',-1)">−</button><input class="modal-qty-num" type="number" id="mc-ls" value="0" min="0" oninput="mcCalc()"><button class="modal-qty-btn" onclick="madj('mc-ls',1)">＋</button></div></div>
+        <div class="modal-size-item"><div class="modal-size-lbl">普通</div><div class="modal-qty-ctrl"><button class="modal-qty-btn" onclick="madj('mc-lr',-1)">−</button><input class="modal-qty-num" type="number" id="mc-lr" value="0" min="0" oninput="mcCalc()"><button class="modal-qty-btn" onclick="madj('mc-lr',1)">＋</button></div></div>
+        <div class="modal-size-item"><div class="modal-size-lbl">大盛</div><div class="modal-qty-ctrl"><button class="modal-qty-btn" onclick="madj('mc-ll',-1)">−</button><input class="modal-qty-num" type="number" id="mc-ll" value="0" min="0" oninput="mcCalc()"><button class="modal-qty-btn" onclick="madj('mc-ll',1)">＋</button></div></div>
+      </div>
+    </div>
+    <div class="modal-meal">
+      <div class="modal-meal-hd"><span class="meal-badge badge-dinner">🌙 夕食</span><span id="mc-dinner-lbl" style="font-size:14px;font-weight:700;color:var(--primary);margin-left:auto;"></span></div>
+      <div class="modal-size-grid">
+        <div class="modal-size-item"><div class="modal-size-lbl">半盛</div><div class="modal-qty-ctrl"><button class="modal-qty-btn" onclick="madj('mc-ds',-1)">−</button><input class="modal-qty-num" type="number" id="mc-ds" value="0" min="0" oninput="mcCalc()"><button class="modal-qty-btn" onclick="madj('mc-ds',1)">＋</button></div></div>
+        <div class="modal-size-item"><div class="modal-size-lbl">普通</div><div class="modal-qty-ctrl"><button class="modal-qty-btn" onclick="madj('mc-dr',-1)">−</button><input class="modal-qty-num" type="number" id="mc-dr" value="0" min="0" oninput="mcCalc()"><button class="modal-qty-btn" onclick="madj('mc-dr',1)">＋</button></div></div>
+        <div class="modal-size-item"><div class="modal-size-lbl">大盛</div><div class="modal-qty-ctrl"><button class="modal-qty-btn" onclick="madj('mc-dl',-1)">−</button><input class="modal-qty-num" type="number" id="mc-dl" value="0" min="0" oninput="mcCalc()"><button class="modal-qty-btn" onclick="madj('mc-dl',1)">＋</button></div></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>アレルギー・特記事項</label>
+      <textarea id="mc-allergy" placeholder="アレルギーや特記事項があれば入力"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveCorrection()">この内容で訂正する</button>
+      <button class="btn btn-ghost"   onclick="document.getElementById('modal-correct').classList.remove('show')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Modal: テンプレート削除確認 ─── -->
+<div class="overlay" id="modal-reset">
+  <div class="modal">
+    <h3>テンプレートを削除</h3>
+    <p id="modal-reset-msg"></p>
+    <div class="modal-btns">
+      <button class="btn btn-danger" onclick="doResetTemplate()">削除する</button>
+      <button class="btn btn-ghost"  onclick="document.getElementById('modal-reset').classList.remove('show')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DAYS_JP = ['日','月','火','水','木','金','土'];
+
+const DEFAULT_FACS = [
+  {name:'ボヌール',   isRepeat:false},
+  {name:'ボヤージュ', isRepeat:false},
+  {name:'ケール',     isRepeat:false},
+  {name:'パウゼ',     isRepeat:true},
+  {name:'コパン',     isRepeat:true},
+  {name:'ホスタ',     isRepeat:true},
+  {name:'きただけ草', isRepeat:true},
+  {name:'サテライト', isRepeat:true},
+  {name:'カマラド',   isRepeat:true},
+];
+
+let FACILITIES  = [];
+let REPEAT_LIST = [];
+let REPEAT_SET  = new Set();
+
+function loadFacilities() {
+  const facs = getFacDefs();
+  FACILITIES  = facs.map(f => f.name);
+  REPEAT_LIST = facs.filter(f => f.isRepeat).map(f => f.name);
+  REPEAT_SET  = new Set(REPEAT_LIST);
+  const el = document.getElementById('repeat-fac-names');
+  if (el) el.textContent = REPEAT_LIST.join('・');
+}
+
+function refreshSelects() {
+  ['f-facility','h-facility'].forEach(id => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    FACILITIES.forEach(f => { const o=document.createElement('option'); o.value=o.textContent=f; sel.appendChild(o); });
+    sel.value = cur;
+  });
+  const mView = document.getElementById('m-view');
+  const curM = mView.value;
+  while (mView.options.length > 1) mView.remove(1);
+  FACILITIES.forEach(f => { const o=document.createElement('option'); o.value=f; o.textContent=f; mView.appendChild(o); });
+  mView.value = curM;
+}
+
+let adminDay     = new Date();
+let pending      = null;   // 注文フォーム送信保留
+let pendingReset = null;   // テンプレート削除保留
+let correctCtx   = null;   // 訂正モーダル {f, date}
+let adminUnlocked  = false;  // 管理画面ロック状態
+let masterUnlocked = false;  // マスタロック状態
+let pendingPinPage = 'admin'; // PIN認証後に開くページ
+let pinBuffer    = '';     // PIN入力バッファ
+let pendingNavBtn= null;   // PIN認証後に押すナビボタン
+
+// ── Firebase ──────────────────────────────────────────────
+const FB_DB_URL = 'https://bento-order-2f1f9-default-rtdb.asia-southeast1.firebasedatabase.app';
+
+// インメモリキャッシュ（Firebase リスナーが常に最新値に更新する）
+const DB = { orders:{}, templates:{}, pin:'1234', containers:{}, facilities:null, prices:{} };
+const dbRef = path => firebase.database().ref(path);
+
+// ── Storage（Firebase バックエンド） ───────────────────────
+const getOrders    = () => DB.orders;
+const getTemplates = () => DB.templates;
+const saveOrders   = () => {};  // 書き込みは saveEntry / saveCorrection が直接 Firebase へ
+const saveTemplates = d => { DB.templates = d; dbRef('templates').set(d); };
+const getPin       = () => DB.pin;
+const savePin_     = p => { DB.pin = p; dbRef('settings/pin').set(p); };
+const getContainer  = () => DB.containers;
+const saveContainer = d => { DB.containers = d; dbRef('settings/containers').set(d); };
+const isTapper = (f, meal) => { const c=getContainer()[f]; return c?.[meal] === 'tapper'; };
+const isMiso   = (f, meal) => { const c=getContainer()[f]; return c?.[meal] === 'bento-miso'; };
+const getFacDefs  = () => DB.facilities || DEFAULT_FACS;
+const saveFacDefs = d => { DB.facilities = d; dbRef('settings/facilities').set(d); };
+const getPrices   = () => DB.prices;
+const savePrices  = d => { DB.prices = d; dbRef('settings/prices').set(d); };
+const getPrice = (meal, size) => { const p=getPrices()[meal]; return p?.[size] ?? null; };
+
+// ── Utils ─────────────────────────────────────────────────
+const toDateStr = d => {
+  if (typeof d === 'string') return d;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+};
+const nv        = id => parseInt(document.getElementById(id)?.value) || 0;
+const esc       = s  => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const lT = o => (o?.lunch?.s||0)+(o?.lunch?.r||0)+(o?.lunch?.l||0)+(o?.lunch?.t||0);
+const dT = o => (o?.dinner?.s||0)+(o?.dinner?.r||0)+(o?.dinner?.l||0)+(o?.dinner?.t||0);
+
+// ── Firebase 初期化 ───────────────────────────────────────
+let dbReady = false;
+
+function initFirebase() {
+  firebase.initializeApp({ databaseURL: FB_DB_URL });
+  const loaded = { orders: false, settings: false, templates: false };
+
+  const tryReady = () => {
+    if (dbReady || !Object.values(loaded).every(Boolean)) return;
+    dbReady = true;
+    document.getElementById('fb-loading').style.display = 'none';
+    init();
+  };
+
+  dbRef('orders').on('value', snap => {
+    const wasReady = dbReady;
+    DB.orders = snap.val() || {};
+    loaded.orders = true;
+    tryReady();
+    if (wasReady) { renderAdmin(); renderHistory(); }
+  });
+
+  dbRef('settings').on('value', snap => {
+    const wasReady = dbReady;
+    const s = snap.val() || {};
+    DB.pin        = s.pin        || '1234';
+    DB.containers = s.containers || {};
+    DB.facilities = s.facilities || null;
+    DB.prices     = s.prices     || {};
+    loaded.settings = true;
+    tryReady();
+    if (wasReady) { loadFacilities(); refreshSelects(); }
+  });
+
+  dbRef('templates').on('value', snap => {
+    const wasReady = dbReady;
+    DB.templates = snap.val() || {};
+    loaded.templates = true;
+    tryReady();
+    if (wasReady) renderSettings();
+  });
+}
+
+function fmtDate(d) {
+  const dt = typeof d === 'string' ? new Date(d+'T00:00:00') : d;
+  return `${dt.getFullYear()}年${dt.getMonth()+1}月${dt.getDate()}日（${DAYS_JP[dt.getDay()]}）`;
+}
+
+// ── Init ──────────────────────────────────────────────────
+function init() {
+  loadFacilities();
+  const today = toDateStr(new Date());
+  document.getElementById('f-date').value           = today;
+  document.getElementById('admin-date-input').value = today;
+  refreshSelects();
+  const ym = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('m-month').value = ym;
+  document.getElementById('s-month').value = ym;
+  calcTotals(); renderAdmin(); renderHistory(); renderSettings();
+}
+
+// ── Page Nav ──────────────────────────────────────────────
+function showPage(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (page==='admin')   renderAdmin();
+  if (page==='history') renderHistory();
+  if (page==='setting') renderSettings();
+  if (page==='master')  renderMaster();
+}
+
+// ── PIN ───────────────────────────────────────────────────
+function requirePin(btn, targetPage='admin') {
+  if (targetPage==='admin'  && adminUnlocked)  { showPage('admin',  btn); return; }
+  if (targetPage==='master' && masterUnlocked) { showPage('master', btn); return; }
+  pendingNavBtn  = btn;
+  pendingPinPage = targetPage;
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-title').textContent = targetPage==='master' ? 'マスタ' : '管理画面';
+  document.getElementById('pin-sub').textContent   = '暗証番号を入力してください';
+  document.getElementById('pin-overlay').classList.add('show');
+}
+
+function pinInput(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(checkPin, 120);
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots() {
+  for (let i=0; i<4; i++) {
+    const el = document.getElementById('pd'+i);
+    el.classList.toggle('filled', i < pinBuffer.length);
+    el.classList.remove('error');
+  }
+}
+
+function checkPin() {
+  if (pinBuffer === getPin()) {
+    document.getElementById('pin-overlay').classList.remove('show');
+    if (pendingPinPage === 'master') masterUnlocked = true;
+    else adminUnlocked = true;
+    showPage(pendingPinPage, pendingNavBtn);
+    pendingNavBtn = null;
+    pinBuffer = '';
+  } else {
+    for (let i=0; i<4; i++) document.getElementById('pd'+i).classList.add('error');
+    document.getElementById('pin-error').textContent = '暗証番号が違います';
+    setTimeout(() => { pinBuffer=''; updatePinDots(); }, 800);
+  }
+}
+
+function closePinOverlay() {
+  document.getElementById('pin-overlay').classList.remove('show');
+  pinBuffer = ''; pendingNavBtn = null;
+}
+
+// ── マスタ ────────────────────────────────────────────────
+function renderMaster() {
+  const facs = getFacDefs();
+  const c    = getContainer();
+  const p    = getPrices();
+
+  // 事業所リスト
+  const facList = document.getElementById('master-fac-list');
+  facList.innerHTML = facs.map((fd, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:${i%2?'#f8fafc':'white'};border:1px solid var(--border);border-radius:8px;">
+      <span style="font-weight:700;font-size:15px;flex:1;">${esc(fd.name)}</span>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" data-fi="${i}" class="fac-repeat-chk" ${fd.isRepeat?'checked':''} style="accent-color:var(--primary);"> 定期
+      </label>
+      ${facs.length > 1 ? `<button class="btn btn-danger btn-xs" onclick="removeFacility(${i})">削除</button>` : ''}
+    </div>`).join('');
+
+  // 容器・価格テーブル
+  const mkSel = (f, meal) => {
+    const val = c[f]?.[meal] || 'bento';
+    return `<select data-f="${esc(f)}" data-meal="${meal}" class="master-cont-sel"
+        style="width:180px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;">
+      <option value="bento"      ${val==='bento'     ?'selected':''}>🍱 弁当</option>
+      <option value="bento-miso" ${val==='bento-miso'?'selected':''}>🍱🍜 弁当（味噌汁付き）</option>
+      <option value="tapper"     ${val==='tapper'    ?'selected':''}>🥡 タッパー</option>
+    </select>`;
+  };
+  const priceInput = (meal, size, label) => {
+    const val = p[meal]?.[size] || '';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+      <span style="font-size:11px;color:var(--muted);font-weight:600;">${label}</span>
+      <div style="display:flex;align-items:center;gap:2px;">
+        <span style="font-size:12px;color:var(--muted);">¥</span>
+        <input type="number" min="0" value="${val}"
+          data-meal="${meal}" data-size="${size}" class="master-price-inp"
+          style="width:70px;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;text-align:right;">
+      </div>
+    </div>`;
+  };
+
+  const misoPrice = p.misoPrice || '';
+
+  document.getElementById('master-price-area').innerHTML = `
+    <div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;">
+      <div style="background:#1e3a5f;color:white;padding:8px 14px;font-weight:700;font-size:15px;">💴 お弁当価格（共通）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+        <div style="padding:12px 14px;border-right:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;">☀️ 昼食</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${priceInput('lunch','s','半盛')}
+            ${priceInput('lunch','r','普通')}
+            ${priceInput('lunch','l','大盛')}
+            ${priceInput('lunch','tapper','タッパー')}
+          </div>
+        </div>
+        <div style="padding:12px 14px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;">🌙 夕食</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${priceInput('dinner','s','半盛')}
+            ${priceInput('dinner','r','普通')}
+            ${priceInput('dinner','l','大盛')}
+            ${priceInput('dinner','tapper','タッパー')}
+          </div>
+        </div>
+      </div>
+      <div style="padding:10px 14px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;font-weight:700;">🍜 味噌汁 加算額</span>
+        <div style="display:flex;align-items:center;gap:2px;">
+          <span style="font-size:12px;color:var(--muted);">¥</span>
+          <input type="number" min="0" id="master-miso-price" value="${misoPrice}"
+            style="width:70px;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;text-align:right;font-family:inherit;">
+        </div>
+        <span style="font-size:12px;color:var(--muted);">容器設定で「弁当（味噌汁付き）」を選択した事業所に加算されます</span>
+      </div>
+    </div>`;
+
+  // 容器設定（施設ごと）は引き続き別エリアで render
+  // ヘッダー行 + 各施設行を1つのgridで束ねて列をそろえる
+  const rows = facs.map((fd,i) => {
+    const f = fd.name;
+    const bg = i%2 ? '#f8fafc' : 'white';
+    return `
+      <div style="display:flex;align-items:center;font-weight:700;font-size:14px;padding:9px 12px;background:${bg};border-bottom:1px solid var(--border);">${esc(f)}</div>
+      <div style="display:flex;align-items:center;gap:6px;padding:9px 12px;background:${bg};border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">☀️ 昼食</span>${mkSel(f,'lunch')}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:9px 12px;background:${bg};border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">🌙 夕食</span>${mkSel(f,'dinner')}
+      </div>`;
+  }).join('');
+
+  document.getElementById('master-container-area').innerHTML =
+    `<div style="display:grid;grid-template-columns:minmax(100px,max-content) auto auto;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px;background:#f1f5f9;border-bottom:2px solid var(--border);letter-spacing:.05em;">事業所</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px;background:#f1f5f9;border-bottom:2px solid var(--border);letter-spacing:.05em;">☀️ 昼食</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px;background:#f1f5f9;border-bottom:2px solid var(--border);letter-spacing:.05em;">🌙 夕食</div>
+      ${rows}
+    </div>`;
+}
+
+function saveMaster() {
+  // 定期フラグ更新
+  const facs = getFacDefs();
+  document.querySelectorAll('.fac-repeat-chk').forEach(chk => {
+    const i = parseInt(chk.dataset.fi);
+    if (facs[i]) facs[i].isRepeat = chk.checked;
+  });
+  saveFacDefs(facs);
+  loadFacilities();
+  refreshSelects();
+
+  // 容器設定
+  const c = {};
+  document.querySelectorAll('.master-cont-sel').forEach(sel => {
+    const f=sel.dataset.f, meal=sel.dataset.meal;
+    if (!c[f]) c[f]={};
+    c[f][meal]=sel.value;
+  });
+  saveContainer(c);
+
+  // 価格設定（共通）
+  const prices = {};
+  document.querySelectorAll('.master-price-inp').forEach(inp => {
+    const meal=inp.dataset.meal, size=inp.dataset.size;
+    if (!prices[meal]) prices[meal]={};
+    prices[meal][size] = parseInt(inp.value)||0;
+  });
+  // 味噌汁加算額（共通）
+  const misoInp = document.getElementById('master-miso-price');
+  if (misoInp) prices.misoPrice = parseInt(misoInp.value)||0;
+  savePrices(prices);
+
+  toast('マスタ設定を保存しました ✓','ok');
+  renderAdmin();
+  renderSettings();
+}
+
+function addFacility() {
+  const name = document.getElementById('new-fac-name').value.trim();
+  if (!name) { toast('事業所名を入力してください','ng'); return; }
+  const facs = getFacDefs();
+  if (facs.find(f=>f.name===name)) { toast('すでに存在する事業所名です','ng'); return; }
+  const isRepeat = document.getElementById('new-fac-repeat').checked;
+  facs.push({name, isRepeat});
+  saveFacDefs(facs);
+  loadFacilities();
+  refreshSelects();
+  document.getElementById('new-fac-name').value='';
+  document.getElementById('new-fac-repeat').checked=false;
+  toast(`${name} を追加しました ✓`,'ok');
+  renderMaster();
+}
+
+function removeFacility(idx) {
+  const facs = getFacDefs();
+  const name = facs[idx]?.name;
+  if (!name) return;
+  facs.splice(idx,1);
+  saveFacDefs(facs);
+  loadFacilities();
+  refreshSelects();
+  toast(`${name} を削除しました`,'ok');
+  renderMaster();
+  renderAdmin();
+  renderSettings();
+}
+
+function printAdmin() {
+  document.getElementById('print-date-lbl').textContent = fmtDate(adminDay);
+  window.print();
+}
+
+function lockAdmin() {
+  adminUnlocked = false;
+  showPage('order', document.querySelector('.nav-btn'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.nav-btn').classList.add('active');
+  toast('管理画面をロックしました','ok');
+}
+
+function openPinChange() {
+  document.getElementById('pc-current').value = '';
+  document.getElementById('pc-new').value     = '';
+  document.getElementById('pc-confirm').value = '';
+  document.getElementById('pc-error').textContent = '';
+  document.getElementById('modal-pin-change').classList.add('show');
+}
+
+function savePin() {
+  const cur = document.getElementById('pc-current').value;
+  const nw  = document.getElementById('pc-new').value;
+  const cf  = document.getElementById('pc-confirm').value;
+  const err = document.getElementById('pc-error');
+  if (cur !== getPin())      { err.textContent='現在の暗証番号が違います'; return; }
+  if (!/^\d{4}$/.test(nw))  { err.textContent='新しい暗証番号は4桁の数字で入力してください'; return; }
+  if (nw !== cf)             { err.textContent='確認用暗証番号が一致しません'; return; }
+  savePin_(nw);
+  document.getElementById('modal-pin-change').classList.remove('show');
+  toast('暗証番号を変更しました ✓','ok');
+}
+
+// ── 注文フォーム ─────────────────────────────────────────
+function applyTapperMode(f) {
+  const irreg = document.getElementById('chk-irregular').checked;
+  const lTap = !irreg && f && isTapper(f, 'lunch');
+  const dTap = !irreg && f && isTapper(f, 'dinner');
+  // 昼食
+  document.getElementById('si-ls').style.display = lTap ? 'none' : '';
+  document.getElementById('si-ll').style.display = lTap ? 'none' : '';
+  document.getElementById('lunch-tapper-badge').style.display = lTap ? '' : 'none';
+  document.getElementById('lbl-lr').childNodes[0].textContent = lTap ? 'タッパー' : '普通';
+  if (lTap) { document.getElementById('ls').value=0; document.getElementById('ll').value=0; }
+  // 夕食
+  document.getElementById('si-ds').style.display = dTap ? 'none' : '';
+  document.getElementById('si-dl').style.display = dTap ? 'none' : '';
+  document.getElementById('dinner-tapper-badge').style.display = dTap ? '' : 'none';
+  document.getElementById('lbl-dr').childNodes[0].textContent = dTap ? 'タッパー' : '普通';
+  if (dTap) { document.getElementById('ds').value=0; document.getElementById('dl').value=0; }
+  // イレギュラー用タッパー行
+  document.getElementById('si-ltap').style.display = irreg ? '' : 'none';
+  document.getElementById('si-dtap').style.display = irreg ? '' : 'none';
+  if (!irreg) { document.getElementById('ltap').value=0; document.getElementById('dtap').value=0; }
+}
+function onIrregularChange() {
+  const f = document.getElementById('f-facility').value;
+  applyTapperMode(f);
+  applyPrices(f);
+  calcTotals();
+}
+
+function applyPrices(f) {
+  const c = getContainer()[f] || {};
+  const p = getPrices();
+  const misoP = p.misoPrice || 0;
+  const fmtPrice = (meal, size) => {
+    const base = getPrice(meal, size);
+    if (base == null || base <= 0) return '';
+    return isMiso(f, meal) && misoP > 0
+      ? `¥${(base+misoP).toLocaleString()} 🍜込み`
+      : `¥${base.toLocaleString()}`;
+  };
+  const pairs = [
+    ['price-ls','lunch','s'], ['price-lr','lunch', c.lunch==='tapper'?'tapper':'r'], ['price-ll','lunch','l'],
+    ['price-ds','dinner','s'],['price-dr','dinner', c.dinner==='tapper'?'tapper':'r'],['price-dl','dinner','l'],
+    ['price-ltap','lunch','tapper'], ['price-dtap','dinner','tapper'],
+  ];
+  pairs.forEach(([id, meal, size]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = fmtPrice(meal, size);
+  });
+}
+
+function onFacilityChange() {
+  const f = document.getElementById('f-facility').value;
+  document.getElementById('repeat-notice').style.display = REPEAT_SET.has(f) ? 'block' : 'none';
+  document.getElementById('irregular-box').style.display = f ? '' : 'none';
+  document.getElementById('chk-irregular').checked = false;
+  applyTapperMode(f);
+  applyPrices(f);
+  loadFormData();
+}
+function onDateChange() { loadFormData(); }
+
+function setFormLocked(locked) {
+  ['ls','lr','ll','ds','dr','dl'].forEach(id => {
+    document.getElementById(id).disabled = locked;
+  });
+  document.querySelectorAll('#page-order .qty-btn').forEach(btn => btn.disabled = locked);
+  ['chk-allergy','chk-kizami','chk-other','other-detail',
+   'k-ls','k-lr','k-ll','k-ds','k-dr','k-dl',
+   'o-ls','o-lr','o-ll','o-ds','o-dr','o-dl'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = locked;
+  });
+  document.querySelectorAll('#allergy-list input, #allergy-list button').forEach(el => el.disabled = locked);
+  const addBtn = document.querySelector('#detail-allergy > button');
+  if (addBtn) addBtn.disabled = locked;
+  const submitBtn = document.querySelector('#page-order .btn-primary');
+  if (submitBtn) {
+    submitBtn.disabled = locked;
+    submitBtn.style.opacity = locked ? '0.4' : '';
+    submitBtn.style.cursor  = locked ? 'not-allowed' : '';
+  }
+  document.getElementById('submitted-notice').style.display = locked ? 'block' : 'none';
+}
+
+function loadFormData() {
+  const f    = document.getElementById('f-facility').value;
+  const date = document.getElementById('f-date').value;
+  if (!f||!date) { setFormLocked(false); return; }
+  const entry = getOrders()[date]?.[f];
+  if (entry) {
+    fillForm(entry);
+    setFormLocked(true);
+  } else {
+    setFormLocked(false);
+    if (REPEAT_SET.has(f)) { const t=getTemplates()[f]; t ? fillForm(t) : clearForm(); }
+    else { clearForm(); }
+  }
+  calcTotals();
+}
+
+function fillForm(d) {
+  document.getElementById('ls').value   = d.lunch?.s  ||0;
+  document.getElementById('lr').value   = d.lunch?.r  ||0;
+  document.getElementById('ll').value   = d.lunch?.l  ||0;
+  document.getElementById('ltap').value = d.lunch?.t  ||0;
+  document.getElementById('ds').value   = d.dinner?.s ||0;
+  document.getElementById('dr').value   = d.dinner?.r ||0;
+  document.getElementById('dl').value   = d.dinner?.l ||0;
+  document.getElementById('dtap').value = d.dinner?.t ||0;
+  document.getElementById('chk-irregular').checked = !!d.irregular;
+  const f = document.getElementById('f-facility').value;
+  applyTapperMode(f); applyPrices(f);
+  clearSpecial();
+  const si = d.specialItems;
+  if (si) {
+    const list = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
+    if (list.length) {
+      document.getElementById('chk-allergy').checked = true;
+      document.getElementById('detail-allergy').style.display = 'block';
+      document.getElementById('allergy-list').innerHTML = '';
+      list.forEach(a => addAllergyRow(a));
+    }
+    if (si.kizami?.enabled) {
+      document.getElementById('chk-kizami').checked = true;
+      document.getElementById('detail-kizami').style.display = 'block';
+      document.getElementById('k-ls').value = si.kizami.lunch?.s||0;
+      document.getElementById('k-lr').value = si.kizami.lunch?.r||0;
+      document.getElementById('k-ll').value = si.kizami.lunch?.l||0;
+      document.getElementById('k-ds').value = si.kizami.dinner?.s||0;
+      document.getElementById('k-dr').value = si.kizami.dinner?.r||0;
+      document.getElementById('k-dl').value = si.kizami.dinner?.l||0;
+    }
+    if (si.other?.enabled) {
+      document.getElementById('chk-other').checked = true;
+      document.getElementById('detail-other').style.display = 'block';
+      document.getElementById('other-detail').value = si.other.detail||'';
+      document.getElementById('o-ls').value = si.other.lunch?.s||0;
+      document.getElementById('o-lr').value = si.other.lunch?.r||0;
+      document.getElementById('o-ll').value = si.other.lunch?.l||0;
+      document.getElementById('o-ds').value = si.other.dinner?.s||0;
+      document.getElementById('o-dr').value = si.other.dinner?.r||0;
+      document.getElementById('o-dl').value = si.other.dinner?.l||0;
+    }
+  }
+}
+function clearSpecial() {
+  ['chk-allergy','chk-kizami','chk-other'].forEach(id => document.getElementById(id).checked = false);
+  ['detail-allergy','detail-kizami','detail-other'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('allergy-list').innerHTML = '';
+  document.getElementById('other-detail').value = '';
+  ['k-ls','k-lr','k-ll','k-ds','k-dr','k-dl','o-ls','o-lr','o-ll','o-ds','o-dr','o-dl'].forEach(id => document.getElementById(id).value = 0);
+}
+function clearForm() {
+  ['ls','lr','ll','ltap','ds','dr','dl','dtap'].forEach(id => document.getElementById(id).value=0);
+  document.getElementById('chk-irregular').checked = false;
+  const f = document.getElementById('f-facility').value;
+  applyTapperMode(f);
+  clearSpecial();
+}
+function toggleSpecial(type) {
+  const chk = document.getElementById('chk-' + type);
+  document.getElementById('detail-' + type).style.display = chk.checked ? 'block' : 'none';
+  if (type === 'allergy' && chk.checked && document.getElementById('allergy-list').children.length === 0) {
+    addAllergyRow();
+  }
+}
+function addAllergyRow(data) {
+  const list = document.getElementById('allergy-list');
+  const div  = document.createElement('div');
+  div.className = 'allergy-row';
+  const l = data?.lunch || {s: data?.s||0, r: data?.r||0, l: data?.l||0};
+  const d = data?.dinner || {s:0, r:0, l:0};
+  div.innerHTML = `
+    <div class="allergy-row-header">
+      <input type="text" placeholder="何のアレルギーか（例：卵）" value="${data?.detail||''}">
+      <button type="button" class="allergy-row-del" onclick="removeAllergyRow(this)" title="削除">×</button>
+    </div>
+    <div class="special-meal-block">
+      <span class="meal-mini-label meal-mini-lunch">☀️ 昼食</span>
+      <div class="special-size-row">
+        <div class="special-size-cell"><span>半盛</span><input class="qty-num" type="number" value="${l.s}" min="0" style="width:64px;font-size:18px;"></div>
+        <div class="special-size-cell"><span>普通</span><input class="qty-num" type="number" value="${l.r}" min="0" style="width:64px;font-size:18px;"></div>
+        <div class="special-size-cell"><span>大盛</span><input class="qty-num" type="number" value="${l.l}" min="0" style="width:64px;font-size:18px;"></div>
+      </div>
+    </div>
+    <div class="special-meal-block">
+      <span class="meal-mini-label meal-mini-dinner">🌙 夕食</span>
+      <div class="special-size-row">
+        <div class="special-size-cell"><span>半盛</span><input class="qty-num" type="number" value="${d.s}" min="0" style="width:64px;font-size:18px;"></div>
+        <div class="special-size-cell"><span>普通</span><input class="qty-num" type="number" value="${d.r}" min="0" style="width:64px;font-size:18px;"></div>
+        <div class="special-size-cell"><span>大盛</span><input class="qty-num" type="number" value="${d.l}" min="0" style="width:64px;font-size:18px;"></div>
+      </div>
+    </div>`;
+  list.appendChild(div);
+}
+function removeAllergyRow(btn) {
+  const row = btn.closest('.allergy-row');
+  row.remove();
+  if (document.getElementById('allergy-list').children.length === 0) {
+    addAllergyRow();
+  }
+}
+function fmtMealSizes(o) {
+  if (!o) return '';
+  const parts = [];
+  if (o.s) parts.push(`半盛×${o.s}`);
+  if (o.r) parts.push(`普通×${o.r}`);
+  if (o.l) parts.push(`大盛×${o.l}`);
+  return parts.join('・');
+}
+function fmtLunchDinner(obj) {
+  const lTxt = fmtMealSizes(obj.lunch  || {s:obj.s||0, r:obj.r||0, l:obj.l||0});
+  const dTxt = fmtMealSizes(obj.dinner || {});
+  return [lTxt ? `☀️昼:${lTxt}` : '', dTxt ? `🌙夕:${dTxt}` : ''].filter(Boolean).join('　');
+}
+function specialItemsToText(si) {
+  if (!si) return '';
+  const parts = [];
+  const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
+  aList.forEach(a => {
+    const det = a.detail ? `(${a.detail})` : '';
+    const sz  = fmtLunchDinner(a);
+    parts.push(`アレルギー${det}${sz ? ' ' + sz : ''}`);
+  });
+  if (si.kizami?.enabled) {
+    const sz = fmtLunchDinner(si.kizami);
+    parts.push(`刻み${sz ? ' ' + sz : ''}`);
+  }
+  if (si.other?.enabled) {
+    const det = si.other.detail ? `(${si.other.detail})` : '';
+    const sz  = fmtLunchDinner(si.other);
+    parts.push(`その他${det}${sz ? ' ' + sz : ''}`);
+  }
+  return parts.join(' / ');
+}
+function hasSpecial(entry) {
+  const si = entry?.specialItems;
+  if (!si) return false;
+  const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
+  return aList.length > 0 || si.kizami?.enabled || si.other?.enabled;
+}
+
+function adj(id, delta) {
+  const el=document.getElementById(id);
+  el.value=Math.max(0,(parseInt(el.value)||0)+delta);
+  calcTotals();
+}
+function calcTotals() {
+  const lt=nv('ls')+nv('lr')+nv('ll')+nv('ltap'), dt=nv('ds')+nv('dr')+nv('dl')+nv('dtap');
+  document.getElementById('lunch-total-lbl').textContent  = lt ? `合計 ${lt} 食` : '';
+  document.getElementById('dinner-total-lbl').textContent = dt ? `合計 ${dt} 食` : '';
+}
+function getFormEntry() {
+  const si = {};
+  if (document.getElementById('chk-allergy').checked) {
+    const rows = document.querySelectorAll('#allergy-list .allergy-row');
+    si.allergyList = Array.from(rows).map(row => {
+      const inputs = row.querySelectorAll('input');
+      return {
+        detail: inputs[0].value.trim(),
+        lunch:  { s: parseInt(inputs[1].value)||0, r: parseInt(inputs[2].value)||0, l: parseInt(inputs[3].value)||0 },
+        dinner: { s: parseInt(inputs[4].value)||0, r: parseInt(inputs[5].value)||0, l: parseInt(inputs[6].value)||0 }
+      };
+    }).filter(a => a.detail || a.lunch.s||a.lunch.r||a.lunch.l||a.dinner.s||a.dinner.r||a.dinner.l);
+  }
+  if (document.getElementById('chk-kizami').checked) {
+    si.kizami = { enabled:true,
+      lunch:  { s:nv('k-ls'), r:nv('k-lr'), l:nv('k-ll') },
+      dinner: { s:nv('k-ds'), r:nv('k-dr'), l:nv('k-dl') }
+    };
+  }
+  if (document.getElementById('chk-other').checked) {
+    si.other = { enabled:true, detail: document.getElementById('other-detail').value.trim(),
+      lunch:  { s:nv('o-ls'), r:nv('o-lr'), l:nv('o-ll') },
+      dinner: { s:nv('o-ds'), r:nv('o-dr'), l:nv('o-dl') }
+    };
+  }
+  const irreg = document.getElementById('chk-irregular').checked;
+  return {
+    lunch:  {s:nv('ls'),r:nv('lr'),l:nv('ll'), ...(irreg?{t:nv('ltap')}:{})},
+    dinner: {s:nv('ds'),r:nv('dr'),l:nv('dl'), ...(irreg?{t:nv('dtap')}:{})},
+    ...(irreg ? {irregular:true} : {}),
+    specialItems: si,
+    savedAt: new Date().toISOString()
+  };
+}
+
+function submitOrder() {
+  const f=document.getElementById('f-facility').value, date=document.getElementById('f-date').value;
+  if (!f)    { toast('事業所を選択してください','ng'); return; }
+  if (!date) { toast('日付を選択してください','ng');   return; }
+  if (getOrders()[date]?.[f]) { toast('この事業所・日付はすでに注文済みです','ng'); return; }
+  const entry=getFormEntry();
+  if (lT(entry)+dT(entry)===0) { toast('注文数を入力してください','ng'); return; }
+  if (REPEAT_SET.has(f) && getTemplates()[f]) {
+    pending={f,date,entry};
+    document.getElementById('modal-type').classList.add('show');
+    return;
+  }
+  saveEntry(f,date,entry,REPEAT_SET.has(f));
+}
+
+function doSave(mode) {
+  if (!pending) return;
+  saveEntry(pending.f,pending.date,pending.entry,mode==='template');
+  pending=null;
+  document.getElementById('modal-type').classList.remove('show');
+}
+
+function saveEntry(f, date, entry, updateTemplate) {
+  const orders=getOrders();
+  if (!orders[date]) orders[date]={};
+  orders[date][f]=entry;
+  dbRef('orders/'+date+'/'+f).set(entry);
+  if (updateTemplate || (REPEAT_SET.has(f) && !getTemplates()[f])) {
+    const t=getTemplates(); t[f]={...t[f], lunch:{...entry.lunch}, dinner:{...entry.dinner}}; saveTemplates(t);
+    renderSettings();
+  }
+  toast('注文を送信しました ✓','ok');
+  renderHistory();
+  renderAdmin();
+}
+
+// ── 管理画面 ─────────────────────────────────────────────
+function shiftDay(d) {
+  adminDay=new Date(adminDay); adminDay.setDate(adminDay.getDate()+d);
+  document.getElementById('admin-date-input').value=toDateStr(adminDay);
+  renderAdmin();
+}
+
+function renderAdmin() {
+  const input=document.getElementById('admin-date-input').value;
+  if (input) adminDay=new Date(input+'T00:00:00');
+  document.getElementById('admin-date-lbl').textContent=fmtDate(adminDay);
+
+  const date=toDateStr(adminDay), dow=adminDay.getDay();
+  const dayData=getOrders()[date]||{}, tmpls=getTemplates();
+  const pricesData = getPrices();
+
+  // テンプレート vs 当日注文のマージ
+  const merged={};
+  FACILITIES.forEach(f => {
+    if (dayData[f]) {
+      const tmpl=tmpls[f];
+      const isOverride = tmpl && REPEAT_SET.has(f) && (
+        JSON.stringify({l:dayData[f].lunch,d:dayData[f].dinner}) !==
+        JSON.stringify({l:tmpl.lunch,d:tmpl.dinner})
+      );
+      merged[f]={...dayData[f], _type: REPEAT_SET.has(f) ? (isOverride?'override':'manual') : 'manual'};
+    } else if (REPEAT_SET.has(f) && tmpls[f]) {
+      const days=tmpls[f].days||[0,1,2,3,4,5,6];
+      if (days.includes(dow)) merged[f]={...tmpls[f], allergy:'', _type:'tmpl'};
+    }
+  });
+
+  // 集計（弁当・タッパー別、イレギュラー考慮）
+  let lbS=0,lbR=0,lbL=0, ltT=0;   // 昼: 弁当半/普/大, タッパー計
+  let dbS=0,dbR=0,dbL=0, dtT=0;   // 夕: 弁当半/普/大, タッパー計
+  FACILITIES.forEach(f => {
+    const o=merged[f]; if(!o) return;
+    const isIrreg = o.irregular;
+    // 昼食
+    if (!isIrreg && isTapper(f,'lunch')) {
+      ltT += (o.lunch?.s||0)+(o.lunch?.r||0)+(o.lunch?.l||0);
+    } else {
+      lbS+=o.lunch?.s||0; lbR+=o.lunch?.r||0; lbL+=o.lunch?.l||0;
+      ltT+=o.lunch?.t||0;
+    }
+    // 夕食
+    if (!isIrreg && isTapper(f,'dinner')) {
+      dtT += (o.dinner?.s||0)+(o.dinner?.r||0)+(o.dinner?.l||0);
+    } else {
+      dbS+=o.dinner?.s||0; dbR+=o.dinner?.r||0; dbL+=o.dinner?.l||0;
+      dtT+=o.dinner?.t||0;
+    }
+  });
+  const lbTotal=lbS+lbR+lbL, dbTotal=dbS+dbR+dbL;
+  const tL=lbTotal+ltT, tD=dbTotal+dtT;
+  // フッター用の全体集計（弁当のみ）
+  const lS=lbS, lR=lbR, lL=lbL, dS=dbS, dR=dbR, dL=dbL;
+
+  // A. サマリーカード（弁当とタッパーを別カードに分離）
+  // 昼行カード
+  const lunchCards = [];
+  if (lbTotal > 0) lunchCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
+      <div class="s-label">☀️ 昼食　🍱 お弁当</div>
+      <div class="s-value">${lbTotal}<span>食</span></div>
+      <div class="s-sub">半 ${lbS}　普 ${lbR}　大 ${lbL}</div>
+    </div>`);
+  if (ltT > 0) lunchCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#d97706,#fcd34d);color:#1c1917;">
+      <div class="s-label">☀️ 昼食　🥡 タッパー</div>
+      <div class="s-value">${ltT}<span>個</span></div>
+    </div>`);
+  if (tL > 0) lunchCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#b45309,#f59e0b);">
+      <div class="s-label">☀️ 昼食　合計</div>
+      <div class="s-value">${tL}<span>食</span></div>
+      ${lbTotal>0&&ltT>0?`<div class="s-sub">弁当 ${lbTotal}　タッパー ${ltT}</div>`:''}
+    </div>`);
+
+  // 夕行カード
+  const dinnerCards = [];
+  if (dbTotal > 0) dinnerCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+      <div class="s-label">🌙 夕食　🍱 お弁当</div>
+      <div class="s-value">${dbTotal}<span>食</span></div>
+      <div class="s-sub">半 ${dbS}　普 ${dbR}　大 ${dbL}</div>
+    </div>`);
+  if (dtT > 0) dinnerCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#5b21b6,#c4b5fd);color:#1c1917;">
+      <div class="s-label">🌙 夕食　🥡 タッパー</div>
+      <div class="s-value">${dtT}<span>個</span></div>
+    </div>`);
+  if (tD > 0) dinnerCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#4c1d95,#7c3aed);">
+      <div class="s-label">🌙 夕食　合計</div>
+      <div class="s-value">${tD}<span>食</span></div>
+      ${dbTotal>0&&dtT>0?`<div class="s-sub">弁当 ${dbTotal}　タッパー ${dtT}</div>`:''}
+    </div>`);
+  dinnerCards.push(`
+    <div class="summary-box s-total">
+      <div class="s-label">📦 総合計</div>
+      <div class="s-value">${tL+tD}<span>食</span></div>
+      <div class="s-sub">昼 ${tL} ／ 夕 ${tD}</div>
+    </div>`);
+
+  // 上段: 昼合計・夕合計  /  下段: 弁当・タッパー内訳  /  右端: 総合計（2行スパン）
+  const lunchDetailCards = [];
+  if (lbTotal > 0) lunchDetailCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
+      <div class="s-label">🍱 昼 お弁当</div>
+      <div class="s-value">${lbTotal}<span>食</span></div>
+      <div class="s-sub">半 ${lbS}　普 ${lbR}　大 ${lbL}</div>
+    </div>`);
+  if (ltT > 0) lunchDetailCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#d97706,#fcd34d);color:#1c1917;">
+      <div class="s-label">🥡 昼 タッパー</div>
+      <div class="s-value">${ltT}<span>個</span></div>
+    </div>`);
+
+  const dinnerDetailCards = [];
+  if (dbTotal > 0) dinnerDetailCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+      <div class="s-label">🍱 夕 お弁当</div>
+      <div class="s-value">${dbTotal}<span>食</span></div>
+      <div class="s-sub">半 ${dbS}　普 ${dbR}　大 ${dbL}</div>
+    </div>`);
+  if (dtT > 0) dinnerDetailCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#5b21b6,#c4b5fd);color:#1c1917;">
+      <div class="s-label">🥡 夕 タッパー</div>
+      <div class="s-value">${dtT}<span>個</span></div>
+    </div>`);
+
+  const lunchDetailHtml  = lunchDetailCards.length
+    ? `<div style="display:grid;grid-template-columns:repeat(${lunchDetailCards.length},1fr);gap:10px;">${lunchDetailCards.join('')}</div>` : '';
+  const dinnerDetailHtml = dinnerDetailCards.length
+    ? `<div style="display:grid;grid-template-columns:repeat(${dinnerDetailCards.length},1fr);gap:10px;">${dinnerDetailCards.join('')}</div>` : '';
+
+  const sumEl = document.getElementById('admin-summary');
+  sumEl.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;grid-template-rows:auto auto;gap:10px;margin-bottom:20px;';
+  sumEl.innerHTML = `
+    <!-- 上段: 昼合計 -->
+    <div class="summary-box" style="background:linear-gradient(135deg,#b45309,#fbbf24);">
+      <div class="s-label">☀️ 昼食　合計</div>
+      <div class="s-value">${tL}<span>食</span></div>
+      ${lbTotal>0&&ltT>0?`<div class="s-sub">弁当 ${lbTotal}　タッパー ${ltT}</div>`:''}
+    </div>
+    <!-- 上段: 夕合計 -->
+    <div class="summary-box" style="background:linear-gradient(135deg,#4c1d95,#a78bfa);">
+      <div class="s-label">🌙 夕食　合計</div>
+      <div class="s-value">${tD}<span>食</span></div>
+      ${dbTotal>0&&dtT>0?`<div class="s-sub">弁当 ${dbTotal}　タッパー ${dtT}</div>`:''}
+    </div>
+    <!-- 右端: 総合計（2行スパン） -->
+    <div class="summary-box s-total" style="grid-column:3;grid-row:1/3;display:flex;flex-direction:column;justify-content:center;">
+      <div class="s-label">📦 総合計</div>
+      <div class="s-value">${tL+tD}<span>食</span></div>
+      <div class="s-sub">昼 ${tL} ／ 夕 ${tD}</div>
+    </div>
+    <!-- 下段: 昼内訳 -->
+    ${lunchDetailHtml || '<div></div>'}
+    <!-- 下段: 夕内訳 -->
+    ${dinnerDetailHtml || '<div></div>'}
+  `;
+
+  // B. アレルギー・特記事項まとめ
+  const allergyBlocks = FACILITIES.map(f => {
+    const o = merged[f]; if (!o) return '';
+    const si = o.specialItems || {};
+    const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
+    const hasAllergy = aList.length > 0;
+    const hasKizami  = si.kizami?.enabled;
+    const hasOther   = si.other?.enabled;
+    if (!hasAllergy && !hasKizami && !hasOther) return '';
+
+    let lines = '';
+    aList.forEach(a => {
+      const det  = a.detail ? `（${esc(a.detail)}）` : '';
+      const lTxt = fmtMealSizes(a.lunch  || {s:a.s||0, r:a.r||0, l:a.l||0});
+      const dTxt = fmtMealSizes(a.dinner || {});
+      const parts = [];
+      if (lTxt) parts.push(`☀️昼:${lTxt}`);
+      if (dTxt) parts.push(`🌙夕:${dTxt}`);
+      lines += `<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;">
+        <span style="background:#dc2626;color:white;font-size:12px;font-weight:800;border-radius:4px;padding:2px 8px;white-space:nowrap;">アレルギー</span>
+        <span style="font-size:14px;font-weight:700;color:#991b1b;">${esc(det||'')}&nbsp;${parts.join('　')}</span>
+      </div>`;
+    });
+    if (hasKizami) {
+      const lTxt = fmtMealSizes(si.kizami.lunch  || {});
+      const dTxt = fmtMealSizes(si.kizami.dinner || {});
+      const parts = [];
+      if (lTxt) parts.push(`☀️昼:${lTxt}`);
+      if (dTxt) parts.push(`🌙夕:${dTxt}`);
+      lines += `<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;">
+        <span style="background:#7c3aed;color:white;font-size:12px;font-weight:800;border-radius:4px;padding:2px 8px;white-space:nowrap;">刻み</span>
+        <span style="font-size:14px;font-weight:700;color:#5b21b6;">${parts.join('　')}</span>
+      </div>`;
+    }
+    if (hasOther) {
+      const det = si.other.detail ? esc(si.other.detail) : '';
+      lines += `<div style="display:flex;gap:6px;align-items:flex-start;">
+        <span style="background:#16a34a;color:white;font-size:12px;font-weight:800;border-radius:4px;padding:2px 8px;white-space:nowrap;">その他</span>
+        <span style="font-size:14px;font-weight:700;color:#166534;">${det}</span>
+      </div>`;
+    }
+    return `<div style="margin-bottom:10px;padding:10px 12px;background:white;border:1px solid #fca5a5;border-radius:8px;">
+      <div style="font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:6px;">${esc(f)}</div>
+      ${lines}
+    </div>`;
+  }).filter(Boolean);
+
+  const allergySection = allergyBlocks.length > 0 ? `
+    <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:16px;font-weight:800;color:#991b1b;margin-bottom:12px;">⚠ 本日のアレルギー・特記事項</div>
+      ${allergyBlocks.join('')}
+    </div>` : '';
+
+  // allergySection を admin-tbl の上に挿入するため一時領域を使う
+  const allergyEl = document.getElementById('admin-allergy-section');
+  if (allergyEl) allergyEl.innerHTML = allergySection;
+
+  // C. 出荷一覧テーブル
+  const rows=FACILITIES.map(f => {
+    const o=merged[f];
+    if (!o) return `<tr style="opacity:0.45;">
+      <td class="td-name" style="color:var(--muted);">${esc(f)}</td>
+      <td colspan="9" class="no-order" style="color:var(--muted);font-style:italic;">注文なし</td>
+    </tr>`;
+
+    const ls=o.lunch?.s||0,lr=o.lunch?.r||0,ll=o.lunch?.l||0,ltap=o.lunch?.t||0,lt=ls+lr+ll+ltap;
+    const ds=o.dinner?.s||0,dr=o.dinner?.r||0,dl=o.dinner?.l||0,dtap=o.dinner?.t||0,dt=ds+dr+dl+dtap;
+    const si = o.specialItems || {};
+    const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
+    const hasAllergy = aList.length > 0;
+    const hasKizami  = si.kizami?.enabled;
+    const hasOther   = si.other?.enabled;
+    const allergyClass = (hasAllergy || hasKizami) ? 'has-allergy' : '';
+
+    let typeBadge='';
+    if (o._type==='tmpl')          typeBadge=`<span class="badge badge-green">定期</span>`;
+    else if (o._type==='override') typeBadge=`<span class="badge badge-orange">当日変更</span>`;
+    if (o.irregular) typeBadge+=`<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:1px 5px;margin-left:3px;">⚠️ イレギュラー</span>`;
+
+    const lTapper = isTapper(f,'lunch');
+    const dTapper = isTapper(f,'dinner');
+    const lMiso   = isMiso(f, 'lunch');
+    const dMiso   = isMiso(f, 'dinner');
+
+    const tapBadge = (on) => on ? `<span style="display:inline-block;font-size:10px;font-weight:700;color:#0369a1;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap;">🥡</span>` : '';
+    const misoBadge = (on) => on ? `<span style="display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap;">🍜</span>` : '';
+
+    const allergyBadge = (hasAllergy || hasKizami)
+      ? `<span style="display:inline-block;font-size:11px;font-weight:800;color:var(--danger);border:1.5px solid var(--danger);border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap;">アレルギー</span>`
+      : '';
+    const facNameCell = `${esc(f)}${typeBadge}${allergyBadge}${lMiso||dMiso ? `<span style="font-size:11px;margin-left:4px;">🍜</span>` : ''}`;
+
+    // タッパーバッジを計セルに付与
+    return `<tr class="${allergyClass}" style="border-top:2px solid #e2e8f0;">
+      <td class="td-name">${facNameCell}</td>
+      <td class="td-l">${ls||'−'}</td>
+      <td class="td-l">${lr||'−'}</td>
+      <td class="td-l">${ll||'−'}</td>
+      <td class="td-ls">${lt}${tapBadge(lTapper)}${misoBadge(lMiso)}${ltap>0?`<span style="font-size:11px;color:#92400e;font-weight:700;display:block;">🥡×${ltap}</span>`:''}</td>
+      <td class="td-d">${ds||'−'}</td>
+      <td class="td-d">${dr||'−'}</td>
+      <td class="td-d">${dl||'−'}</td>
+      <td class="td-ds">${dt}${tapBadge(dTapper)}${misoBadge(dMiso)}${dtap>0?`<span style="font-size:11px;color:#92400e;font-weight:700;display:block;">🥡×${dtap}</span>`:''}</td>
+      <td><button class="btn btn-warn btn-xs" onclick="openCorrection('${esc(f)}','${date}')">訂正</button></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('admin-tbl').innerHTML=`
+    <thead>
+      <tr>
+        <th class="th-facility" rowspan="2">事業所</th>
+        <th class="th-lunch" colspan="4">☀️ 昼食</th>
+        <th class="th-dinner" colspan="4">🌙 夕食</th>
+        <th class="th-act" rowspan="2">訂正</th>
+      </tr>
+      <tr>
+        <th class="th-size">半盛</th><th class="th-size">普通</th><th class="th-size">大盛</th><th class="th-calc">計</th>
+        <th class="th-size-d">半盛</th><th class="th-size-d">普通</th><th class="th-size-d">大盛</th><th class="th-calc-d">計</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr>
+      <td style="text-align:left;">合計</td>
+      <td class="td-l">${lS}</td><td class="td-l">${lR}</td><td class="td-l">${lL}</td><td class="td-ls">${tL}</td>
+      <td class="td-d">${dS}</td><td class="td-d">${dR}</td><td class="td-d">${dL}</td><td class="td-ds">${tD}</td>
+      <td></td>
+    </tr></tfoot>`;
+}
+
+// ── 訂正モーダル ──────────────────────────────────────────
+function openCorrection(f, date) {
+  correctCtx={f, date};
+  document.getElementById('mc-title').textContent = `訂正：${f}`;
+  document.getElementById('mc-sub').textContent   = fmtDate(date);
+
+  const orders=getOrders(), tmpls=getTemplates();
+  const entry=orders[date]?.[f] || (REPEAT_SET.has(f) ? tmpls[f] : null) || {};
+
+  document.getElementById('mc-ls').value = entry.lunch?.s  ||0;
+  document.getElementById('mc-lr').value = entry.lunch?.r  ||0;
+  document.getElementById('mc-ll').value = entry.lunch?.l  ||0;
+  document.getElementById('mc-ds').value = entry.dinner?.s ||0;
+  document.getElementById('mc-dr').value = entry.dinner?.r ||0;
+  document.getElementById('mc-dl').value = entry.dinner?.l ||0;
+  document.getElementById('mc-allergy').value = specialItemsToText(entry.specialItems) || entry.allergy||'';
+  mcCalc();
+  document.getElementById('modal-correct').classList.add('show');
+}
+
+function madj(id, delta) {
+  const el=document.getElementById(id);
+  el.value=Math.max(0,(parseInt(el.value)||0)+delta);
+  mcCalc();
+}
+function mcCalc() {
+  const lt=nv('mc-ls')+nv('mc-lr')+nv('mc-ll'), dt=nv('mc-ds')+nv('mc-dr')+nv('mc-dl');
+  document.getElementById('mc-lunch-lbl').textContent  = lt ? `合計 ${lt} 食` : '';
+  document.getElementById('mc-dinner-lbl').textContent = dt ? `合計 ${dt} 食` : '';
+}
+
+function saveCorrection() {
+  if (!correctCtx) return;
+  const {f,date}=correctCtx;
+  const entry={
+    lunch:  {s:nv('mc-ls'),r:nv('mc-lr'),l:nv('mc-ll')},
+    dinner: {s:nv('mc-ds'),r:nv('mc-dr'),l:nv('mc-dl')},
+    specialItems: getOrders()[correctCtx.date]?.[correctCtx.f]?.specialItems || {},
+    savedAt: new Date().toISOString(), corrected: true
+  };
+  if (lT(entry)+dT(entry)===0) { toast('注文数を入力してください','ng'); return; }
+  const orders=getOrders();
+  if (!orders[date]) orders[date]={};
+  orders[date][f]=entry;
+  dbRef('orders/'+date+'/'+f).set(entry);
+  document.getElementById('modal-correct').classList.remove('show');
+  correctCtx=null;
+  toast(`${f} の注文を訂正しました ✓`,'ok');
+  renderAdmin(); renderHistory();
+}
+
+// ── 履歴タブ切り替え ─────────────────────────────────────
+function switchHTab(panel, btn) {
+  document.querySelectorAll('.h-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.h-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('h-panel-'+panel).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── 注文一覧 ─────────────────────────────────────────────
+function getAllItems(facFlt, fromFlt, toFlt) {
+  const orders=getOrders();
+  let items=[];
+  Object.entries(orders).forEach(([date,facs]) => {
+    if (fromFlt&&date<fromFlt) return;
+    if (toFlt  &&date>toFlt)   return;
+    Object.entries(facs).forEach(([f,d]) => {
+      if (facFlt&&f!==facFlt) return;
+      items.push({date,f,...d});
+    });
+  });
+  return items.sort((a,b) => b.date.localeCompare(a.date)||a.f.localeCompare(b.f));
+}
+
+// 定期注文テンプレートを補完した「実効データ」を返す
+// 対象期間の各日を走査し、明示的注文がない定期事業所はテンプレートで補完する
+function getEffectiveItems(from, to) {
+  const orders = getOrders();
+  const tmpls  = getTemplates();
+  const items  = [];
+
+  const start = new Date(from + 'T00:00:00');
+  const end   = new Date(to   + 'T00:00:00');
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = toDateStr(d);
+    const dow     = d.getDay();
+    const dayData = orders[dateStr] || {};
+
+    FACILITIES.forEach(f => {
+      if (dayData[f]) {
+        // 明示的注文があればそちらを使う
+        items.push({ date: dateStr, f, ...dayData[f] });
+      } else if (REPEAT_SET.has(f) && tmpls[f]) {
+        // 定期テンプレートの曜日設定に合致する日のみ補完
+        const days = tmpls[f].days || [1,2,3,4,5];
+        if (days.includes(dow)) {
+          items.push({ date: dateStr, f,
+            lunch:  { ...tmpls[f].lunch  },
+            dinner: { ...tmpls[f].dinner },
+            _fromTemplate: true
+          });
+        }
+      }
+    });
+  }
+
+  return items.sort((a,b) => b.date.localeCompare(a.date) || a.f.localeCompare(b.f));
+}
+
+function renderHistory() {
+  const facFlt =document.getElementById('h-facility')?.value||'';
+  const fromFlt=document.getElementById('h-from')?.value    ||'';
+  const toFlt  =document.getElementById('h-to')?.value      ||'';
+  const items  =getAllItems(facFlt,fromFlt,toFlt);
+  const el=document.getElementById('history-list');
+  if (!items.length) { el.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>注文履歴がありません</p></div>`; return; }
+  el.innerHTML=items.map(item => {
+    const lt=lT(item), dt=dT(item);
+    const lTag=lt?`<span class="hist-tag tag-lunch">☀️ 昼 ${lt}食（小${item.lunch.s} / 普${item.lunch.r} / 大${item.lunch.l}）</span>`:'';
+    const dTag=dt?`<span class="hist-tag tag-dinner">🌙 夕 ${dt}食（小${item.dinner.s} / 普${item.dinner.r} / 大${item.dinner.l}）</span>`:'';
+    const spText=specialItemsToText(item.specialItems)||item.allergy||'';
+    const aNote=spText?`<div class="allergy-note">⚠️ ${esc(spText)}</div>`:'';
+    const corrBadge=item.corrected?`<span class="badge badge-orange" style="margin-left:8px;">訂正済</span>`:'';
+    return `<div class="hist-item">
+      <div class="hist-header"><div class="hist-facility">${item.f}${corrBadge}</div><div class="hist-date">${fmtDate(item.date)}</div></div>
+      <div class="hist-tags">${lTag}${dTag}</div>${aNote}
+    </div>`;
+  }).join('');
+}
+function resetHistory() {
+  document.getElementById('h-facility').value='';
+  document.getElementById('h-from').value='';
+  document.getElementById('h-to').value='';
+  renderHistory();
+}
+
+// ── 月次出力 ─────────────────────────────────────────────
+function renderMonthly() {
+  const ym  = document.getElementById('m-month').value;
+  const fac = document.getElementById('m-view').value; // '' = 全体
+  if (!ym) { toast('対象月を選択してください','ng'); return; }
+  const [y,m] = ym.split('-').map(Number);
+  const from  = `${ym}-01`;
+  const lastD = new Date(y, m, 0).getDate();
+  const to    = `${ym}-${String(lastD).padStart(2,'0')}`;
+  // 定期テンプレートを補完した実効データを使用
+  const allItems = getEffectiveItems(from, to);
+  const el = document.getElementById('monthly-out');
+  if (!allItems.length) {
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>${y}年${m}月のデータはありません</p></div>`;
+    return;
+  }
+
+  if (fac) {
+    // ── 事業所別ビュー ──────────────────────────────────
+    const items = allItems.filter(i=>i.f===fac);
+    if (!items.length) {
+      el.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>${fac} の ${y}年${m}月データはありません</p></div>`;
+      return;
+    }
+    let tlS=0,tlR=0,tlL=0,tdS=0,tdR=0,tdL=0;
+    items.forEach(i=>{tlS+=i.lunch?.s||0;tlR+=i.lunch?.r||0;tlL+=i.lunch?.l||0;tdS+=i.dinner?.s||0;tdR+=i.dinner?.r||0;tdL+=i.dinner?.l||0;});
+    const tL=tlS+tlR+tlL, tD=tdS+tdR+tdL, dates=new Set(items.map(i=>i.date)).size;
+
+    const summHtml=buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,dates,fac);
+
+    const sortedDates=[...new Set(items.map(i=>i.date))].sort();
+    const rows=sortedDates.map(date=>{
+      const dt=new Date(date+'T00:00:00');
+      const it=items.find(i=>i.date===date);
+      if (!it) return `<tr><td>${date}（${DAYS_JP[dt.getDay()]}）</td><td colspan="7" style="color:var(--muted);">注文なし</td></tr>`;
+      const ls=it.lunch?.s||0,lr=it.lunch?.r||0,ll=it.lunch?.l||0,lt=lT(it);
+      const ds=it.dinner?.s||0,dr=it.dinner?.r||0,dl=it.dinner?.l||0,dt2=dT(it);
+      const aNtxt=specialItemsToText(it.specialItems)||it.allergy||'';
+      const aN=aNtxt?`<span style="color:var(--danger);font-size:11px;">⚠ ${esc(aNtxt)}</span>`:'';
+      return `<tr>
+        <td>${date}（${DAYS_JP[dt.getDay()]}）</td>
+        <td class="td-l">${ls||'−'}</td><td class="td-l">${lr||'−'}</td><td class="td-l">${ll||'−'}</td><td class="td-ls">${lt}</td>
+        <td class="td-d">${ds||'−'}</td><td class="td-d">${dr||'−'}</td><td class="td-d">${dl||'−'}</td><td class="td-ds">${dt2}</td>
+        <td style="font-size:12px;">${aN}</td>
+      </tr>`;
+    }).join('');
+
+    el.innerHTML=`${summHtml}
+      <div class="month-tbl-wrap">
+        <table class="month-tbl">
+          <thead>
+            <tr>
+              <th rowspan="2">日付</th>
+              <th colspan="4" style="background:#92400e;">☀️ 昼食</th>
+              <th colspan="4" style="background:#4c1d95;">🌙 夕食</th>
+              <th rowspan="2">備考</th>
+            </tr>
+            <tr>
+              <th>小</th><th>普</th><th>大</th><th>計</th>
+              <th>小</th><th>普</th><th>大</th><th>計</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr>
+            <td>合計</td>
+            <td>${tlS}</td><td>${tlR}</td><td>${tlL}</td><td>${tL}</td>
+            <td>${tdS}</td><td>${tdR}</td><td>${tdL}</td><td>${tD}</td>
+            <td></td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+  } else {
+    // ── 全体ビュー ─────────────────────────────────────
+    let tlS=0,tlR=0,tlL=0,tdS=0,tdR=0,tdL=0;
+    allItems.forEach(i=>{tlS+=i.lunch?.s||0;tlR+=i.lunch?.r||0;tlL+=i.lunch?.l||0;tdS+=i.dinner?.s||0;tdR+=i.dinner?.r||0;tdL+=i.dinner?.l||0;});
+    const tL=tlS+tlR+tlL, tD=tdS+tdR+tdL;
+    const dates=new Set(allItems.map(i=>i.date)).size;
+
+    const summHtml=buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,dates,'全体');
+
+    // 事業所別月間集計テーブル
+    const facRows=FACILITIES.map(f=>{
+      const fi=allItems.filter(i=>i.f===f);
+      if(!fi.length) return `<tr><td style="font-weight:700;">${f}</td><td colspan="8" style="color:var(--muted);font-style:italic;font-size:13px;">データなし</td></tr>`;
+      let ls=0,lr=0,ll=0,ds=0,dr=0,dl=0;
+      fi.forEach(i=>{ls+=i.lunch?.s||0;lr+=i.lunch?.r||0;ll+=i.lunch?.l||0;ds+=i.dinner?.s||0;dr+=i.dinner?.r||0;dl+=i.dinner?.l||0;});
+      const lt=ls+lr+ll, dt=ds+dr+dl;
+      return `<tr>
+        <td style="font-weight:700;">${f}</td>
+        <td class="td-l">${ls||'−'}</td><td class="td-l">${lr||'−'}</td><td class="td-l">${ll||'−'}</td><td class="td-ls">${lt}</td>
+        <td class="td-d">${ds||'−'}</td><td class="td-d">${dr||'−'}</td><td class="td-d">${dl||'−'}</td><td class="td-ds">${dt}</td>
+      </tr>`;
+    }).join('');
+
+    // 日別合計テーブル
+    const sortedDates=[...new Set(allItems.map(i=>i.date))].sort();
+    const dayRows=sortedDates.map(date=>{
+      const dt=new Date(date+'T00:00:00');
+      const dayItems=allItems.filter(i=>i.date===date);
+      const dL=dayItems.reduce((s,i)=>s+lT(i),0);
+      const dD=dayItems.reduce((s,i)=>s+dT(i),0);
+      const facs=dayItems.map(i=>`${i.f}:${lT(i)+dT(i)}食`).join('　');
+      return `<tr>
+        <td>${date}（${DAYS_JP[dt.getDay()]}）</td>
+        <td class="td-l">${dL}</td><td class="td-d">${dD}</td>
+        <td style="font-weight:700;">${dL+dD}</td>
+        <td style="font-size:12px;text-align:left;color:var(--muted);">${facs}</td>
+      </tr>`;
+    }).join('');
+
+    el.innerHTML=`${summHtml}
+      <h3 style="margin-bottom:10px;margin-top:4px;">事業所別 月間集計</h3>
+      <div class="month-tbl-wrap" style="margin-bottom:20px;">
+        <table class="month-tbl">
+          <thead>
+            <tr>
+              <th rowspan="2" style="text-align:left;">事業所</th>
+              <th colspan="4" style="background:#92400e;">☀️ 昼食</th>
+              <th colspan="4" style="background:#4c1d95;">🌙 夕食</th>
+            </tr>
+            <tr>
+              <th>半盛</th><th>普通</th><th>大盛</th><th>計</th>
+              <th>半盛</th><th>普通</th><th>大盛</th><th>計</th>
+            </tr>
+          </thead>
+          <tbody>${facRows}</tbody>
+          <tfoot><tr>
+            <td>合計</td>
+            <td>${tlS}</td><td>${tlR}</td><td>${tlL}</td><td>${tL}</td>
+            <td>${tdS}</td><td>${tdR}</td><td>${tdL}</td><td>${tD}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+      <h3 style="margin-bottom:10px;">日別 合計</h3>
+      <div class="month-tbl-wrap">
+        <table class="month-tbl">
+          <thead><tr>
+            <th>日付</th>
+            <th style="background:#92400e;">昼食計</th>
+            <th style="background:#4c1d95;">夕食計</th>
+            <th>合計</th>
+            <th style="text-align:left;">事業所別内訳</th>
+          </tr></thead>
+          <tbody>${dayRows}</tbody>
+          <tfoot><tr>
+            <td>合計</td><td>${tL}</td><td>${tD}</td><td>${tL+tD}</td><td></td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+  }
+}
+
+function buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,dates,label) {
+  const tL=tlS+tlR+tlL, tD=tdS+tdR+tdL;
+  return `
+    <div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:10px;">${y}年${m}月　${label}</div>
+    <div class="month-summary-row">
+      <div class="month-summary-box" style="border-top:3px solid #f59e0b;">
+        <div class="msb-label">☀️ 昼食 合計</div>
+        <div class="msb-value">${tL}<span>食</span></div>
+        <div class="msb-sub">小${tlS} ／ 普${tlR} ／ 大${tlL}</div>
+      </div>
+      <div class="month-summary-box" style="border-top:3px solid #7c3aed;">
+        <div class="msb-label">🌙 夕食 合計</div>
+        <div class="msb-value">${tD}<span>食</span></div>
+        <div class="msb-sub">小${tdS} ／ 普${tdR} ／ 大${tdL}</div>
+      </div>
+      <div class="month-summary-box" style="border-top:3px solid #1d4ed8;">
+        <div class="msb-label">📦 月間合計</div>
+        <div class="msb-value">${tL+tD}<span>食</span></div>
+        <div class="msb-sub">注文日数 ${dates}日</div>
+      </div>
+      <div class="month-summary-box" style="border-top:3px solid #16a34a;">
+        <div class="msb-label">📆 1日平均</div>
+        <div class="msb-value">${dates>0?((tL+tD)/dates).toFixed(1):0}<span>食</span></div>
+        <div class="msb-sub">昼${dates>0?(tL/dates).toFixed(1):0} ／ 夕${dates>0?(tD/dates).toFixed(1):0}</div>
+      </div>
+    </div>`;
+}
+
+// CSV出力
+function exportCSV() {
+  const ym = document.getElementById('m-month').value;
+  if (!ym) { toast('先に月を選択して「表示」してください','ng'); return; }
+  const [y,m] = ym.split('-').map(Number);
+  const from  = `${ym}-01`;
+  const lastD = new Date(y, m, 0).getDate();
+  const to    = `${ym}-${String(lastD).padStart(2,'0')}`;
+  const items = getAllItems('', from, to);
+  if (!items.length) { toast('データがありません','ng'); return; }
+
+  const header = ['日付','曜日','事業所','昼食_半盛','昼食_普通','昼食_大盛','昼食_計','夕食_半盛','夕食_普通','夕食_大盛','夕食_計','特記事項'];
+  const rows = items.map(i => {
+    const dt=new Date(i.date+'T00:00:00');
+    const sp=specialItemsToText(i.specialItems)||i.allergy||'';
+    return [
+      i.date, DAYS_JP[dt.getDay()], i.f,
+      i.lunch?.s||0, i.lunch?.r||0, i.lunch?.l||0, lT(i),
+      i.dinner?.s||0, i.dinner?.r||0, i.dinner?.l||0, dT(i),
+      `"${sp.replace(/"/g,'""')}"`
+    ].join(',');
+  });
+
+  const csv = '﻿' + [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`弁当注文_${ym}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast('CSVを出力しました','ok');
+}
+
+// ── 統計・分析 ─────────────────────────────────────────────
+function renderStats() {
+  const ym = document.getElementById('s-month').value;
+  if (!ym) { toast('集計月を選択してください','ng'); return; }
+  const [y,m] = ym.split('-').map(Number);
+  const from  = `${ym}-01`;
+  const lastD = new Date(y, m, 0).getDate();
+  const to    = `${ym}-${String(lastD).padStart(2,'0')}`;
+  // 定期テンプレートを補完した実効データで集計
+  const items = getEffectiveItems(from, to);
+  const el    = document.getElementById('stats-out');
+
+  if (!items.length) {
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📊</div><p>${y}年${m}月のデータはありません</p></div>`;
+    return;
+  }
+
+  const realDays = [...new Set(items.map(i=>i.date))].length;
+  const tmplCount = items.filter(i=>i._fromTemplate).length;
+  const periodLabel=`集計期間：${y}年${m}月（${realDays}日分 / 実注文${items.filter(i=>!i._fromTemplate).length}件 + 定期自動補完${tmplCount}件）`;
+
+  const avg = (v,n) => n>0 ? (v/n).toFixed(1) : '−';
+
+  // ── 1. 曜日別 ──────────────────────────────────────────
+  // dayTotals[dow] … 曜日全体集計
+  // dayFacMap[dow][f] … 曜日×事業所 集計
+  const dayTotals = Array(7).fill(null).map(()=>({dates:new Set(),lS:0,lR:0,lL:0,dS:0,dR:0,dL:0}));
+  const dayFacMap = Array(7).fill(null).map(()=>{
+    const m={};
+    FACILITIES.forEach(f=>m[f]={dates:new Set(),lS:0,lR:0,lL:0,dS:0,dR:0,dL:0});
+    return m;
+  });
+
+  items.forEach(i => {
+    const dow = new Date(i.date+'T00:00:00').getDay();
+    const d   = dayTotals[dow];
+    d.dates.add(i.date);
+    d.lS+=i.lunch?.s||0; d.lR+=i.lunch?.r||0; d.lL+=i.lunch?.l||0;
+    d.dS+=i.dinner?.s||0; d.dR+=i.dinner?.r||0; d.dL+=i.dinner?.l||0;
+    if (dayFacMap[dow][i.f]) {
+      const df = dayFacMap[dow][i.f];
+      df.dates.add(i.date);
+      df.lS+=i.lunch?.s||0; df.lR+=i.lunch?.r||0; df.lL+=i.lunch?.l||0;
+      df.dS+=i.dinner?.s||0; df.dR+=i.dinner?.r||0; df.dL+=i.dinner?.l||0;
+    }
+  });
+
+  const dayRows = DAYS_JP.map((day,i) => {
+    const d = dayTotals[i], n = d.dates.size;
+    if (!n) return `<tr><td colspan="10" style="color:var(--muted);font-size:13px;text-align:left;padding-left:14px;">${day}曜日：データなし</td></tr>`;
+
+    const lTot=d.lS+d.lR+d.lL, dTot=d.dS+d.dR+d.dL, total=lTot+dTot;
+    const dayStyle = i===0?'color:#dc2626;font-weight:800;':i===6?'color:#0891b2;font-weight:800;':'font-weight:700;';
+    const uid = `day-detail-${i}`;
+
+    // 事業所別内訳行（初期非表示）
+    const facSubRows = FACILITIES.map(f => {
+      const df=dayFacMap[i][f], fn=df.dates.size;
+      if (!fn) return '';
+      const flt=df.lS+df.lR+df.lL, fdt=df.dS+df.dR+df.dL;
+      return `<tr class="day-sub-row" id="${uid}" style="display:none;">
+        <td style="padding-left:28px;font-size:13px;color:var(--muted);border-left:3px solid #e2e8f0;">└ ${f}<span style="font-size:10px;margin-left:3px;">(${fn}日)</span></td>
+        <td class="cell-l" style="font-size:13px;">${avg(df.lS,fn)}</td>
+        <td class="cell-l" style="font-size:13px;">${avg(df.lR,fn)}</td>
+        <td class="cell-l" style="font-size:13px;">${avg(df.lL,fn)}</td>
+        <td class="cell-l" style="font-size:13px;font-weight:700;">${avg(flt,fn)}</td>
+        <td class="cell-d" style="font-size:13px;">${avg(df.dS,fn)}</td>
+        <td class="cell-d" style="font-size:13px;">${avg(df.dR,fn)}</td>
+        <td class="cell-d" style="font-size:13px;">${avg(df.dL,fn)}</td>
+        <td class="cell-d" style="font-size:13px;font-weight:700;">${avg(fdt,fn)}</td>
+        <td style="font-size:13px;font-weight:700;color:var(--text);">${avg(flt+fdt,fn)}</td>
+      </tr>`;
+    }).join('');
+
+    return `<tr style="cursor:pointer;" onclick="toggleDayDetail('${uid}',this)">
+      <td style="${dayStyle}">${day}曜日
+        <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:4px;">(${n}日)</span>
+        <span class="day-toggle-icon" style="font-size:11px;color:var(--primary);margin-left:6px;">▼ 内訳</span>
+      </td>
+      <td class="cell-l">${avg(d.lS,n)}</td><td class="cell-l">${avg(d.lR,n)}</td><td class="cell-l">${avg(d.lL,n)}</td>
+      <td class="cell-l cell-hi">${avg(lTot,n)}</td>
+      <td class="cell-d">${avg(d.dS,n)}</td><td class="cell-d">${avg(d.dR,n)}</td><td class="cell-d">${avg(d.dL,n)}</td>
+      <td class="cell-d cell-hi">${avg(dTot,n)}</td>
+      <td style="font-weight:800;color:var(--text);font-size:16px;">${avg(total,n)}</td>
+    </tr>${facSubRows}`;
+  }).join('');
+
+  // ── 2. 事業所別 ──────────────────────────────────────────
+  const facTotals = {};
+  FACILITIES.forEach(f => facTotals[f]={dates:new Set(),lS:0,lR:0,lL:0,dS:0,dR:0,dL:0});
+  items.forEach(i => {
+    if (!facTotals[i.f]) return;
+    const d = facTotals[i.f];
+    d.dates.add(i.date);
+    d.lS+=i.lunch?.s||0; d.lR+=i.lunch?.r||0; d.lL+=i.lunch?.l||0;
+    d.dS+=i.dinner?.s||0; d.dR+=i.dinner?.r||0; d.dL+=i.dinner?.l||0;
+  });
+
+  const facRows = FACILITIES.map(f => {
+    const d = facTotals[f], n = d.dates.size;
+    if (!n) return `<tr><td style="font-weight:700;color:var(--muted);">${f}</td><td colspan="9" style="color:var(--muted);font-size:13px;">データなし</td></tr>`;
+    const lTot=d.lS+d.lR+d.lL, dTot=d.dS+d.dR+d.dL, total=lTot+dTot;
+    return `<tr>
+      <td style="font-weight:700;">${f}<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:4px;">(${n}日)</span></td>
+      <td class="cell-l">${avg(d.lS,n)}</td><td class="cell-l">${avg(d.lR,n)}</td><td class="cell-l">${avg(d.lL,n)}</td>
+      <td class="cell-l cell-hi">${avg(lTot,n)}</td>
+      <td class="cell-d">${avg(d.dS,n)}</td><td class="cell-d">${avg(d.dR,n)}</td><td class="cell-d">${avg(d.dL,n)}</td>
+      <td class="cell-d cell-hi">${avg(dTot,n)}</td>
+      <td style="font-weight:800;font-size:17px;color:var(--text);background:#f0f9ff !important;">${avg(total,n)}</td>
+    </tr>`;
+  }).join('');
+
+  // ── 3. サイズ別内訳 ──────────────────────────────────────
+  let totLS=0,totLR=0,totLL=0,totDS=0,totDR=0,totDL=0;
+  items.forEach(i => {
+    totLS+=i.lunch?.s||0; totLR+=i.lunch?.r||0; totLL+=i.lunch?.l||0;
+    totDS+=i.dinner?.s||0; totDR+=i.dinner?.r||0; totDL+=i.dinner?.l||0;
+  });
+  const totalL=totLS+totLR+totLL, totalD=totDS+totDR+totDL, totalAll=totalL+totalD;
+  const pct = (v,t) => t>0 ? Math.round(v/t*100) : 0;
+  const allDays = [...new Set(items.map(i=>i.date))].length;
+
+  const sizeCards = `
+    <div class="size-bar-wrap">
+      <div class="size-bar-card" style="border-top:3px solid #f59e0b;">
+        <div class="size-bar-title">🍱 半盛</div>
+        <div class="size-bar-value" style="color:#92400e;">${totLS+totDS}<span style="font-size:14px;font-weight:400;color:var(--muted);">食</span></div>
+        <div class="size-bar-sub">昼${totLS} ／ 夕${totDS}　1日平均 ${avg(totLS+totDS,allDays)}</div>
+        <div class="size-bar-track"><div class="size-bar-fill" style="width:${pct(totLS+totDS,totalAll)}%;background:#f59e0b;"></div></div>
+        <div class="size-bar-sub" style="margin-top:4px;">全体の ${pct(totLS+totDS,totalAll)}%</div>
+      </div>
+      <div class="size-bar-card" style="border-top:3px solid #1d4ed8;">
+        <div class="size-bar-title">🍱 普通</div>
+        <div class="size-bar-value" style="color:#1d4ed8;">${totLR+totDR}<span style="font-size:14px;font-weight:400;color:var(--muted);">食</span></div>
+        <div class="size-bar-sub">昼${totLR} ／ 夕${totDR}　1日平均 ${avg(totLR+totDR,allDays)}</div>
+        <div class="size-bar-track"><div class="size-bar-fill" style="width:${pct(totLR+totDR,totalAll)}%;background:#1d4ed8;"></div></div>
+        <div class="size-bar-sub" style="margin-top:4px;">全体の ${pct(totLR+totDR,totalAll)}%</div>
+      </div>
+      <div class="size-bar-card" style="border-top:3px solid #16a34a;">
+        <div class="size-bar-title">🍱 大盛</div>
+        <div class="size-bar-value" style="color:#16a34a;">${totLL+totDL}<span style="font-size:14px;font-weight:400;color:var(--muted);">食</span></div>
+        <div class="size-bar-sub">昼${totLL} ／ 夕${totDL}　1日平均 ${avg(totLL+totDL,allDays)}</div>
+        <div class="size-bar-track"><div class="size-bar-fill" style="width:${pct(totLL+totDL,totalAll)}%;background:#16a34a;"></div></div>
+        <div class="size-bar-sub" style="margin-top:4px;">全体の ${pct(totLL+totDL,totalAll)}%</div>
+      </div>
+    </div>`;
+
+  // テーブルヘッダー（合計列付き）
+  const statsTblHead = `
+    <thead><tr>
+      <th></th>
+      <th colspan="4" style="background:#92400e;">☀️ 昼食（1日平均）</th>
+      <th colspan="4" style="background:#4c1d95;">🌙 夕食（1日平均）</th>
+      <th rowspan="2" style="background:#1e3a5f;min-width:64px;">昼+夕<br>合計</th>
+    </tr><tr>
+      <th></th>
+      <th>半盛</th><th>普通</th><th>大盛</th><th style="background:#78350f;">計</th>
+      <th>半盛</th><th>普通</th><th>大盛</th><th style="background:#3b0764;">計</th>
+    </tr></thead>`;
+
+  el.innerHTML = `
+    <div class="stats-period">${periodLabel}</div>
+
+    <div class="stats-section">
+      <div class="stats-section-title">📅 曜日別　1日あたり平均注文数
+        <span style="font-size:12px;font-weight:400;color:var(--muted);">（行をクリックで事業所内訳を展開）</span>
+      </div>
+      <div class="stats-tbl-wrap">
+        <table class="stats-tbl">${statsTblHead}<tbody>${dayRows}</tbody></table>
+      </div>
+    </div>
+
+    <div class="stats-section">
+      <div class="stats-section-title">🏢 事業所別　1日あたり平均注文数</div>
+      <div class="stats-tbl-wrap">
+        <table class="stats-tbl">${statsTblHead}<tbody>${facRows}</tbody></table>
+      </div>
+    </div>
+
+    <div class="stats-section">
+      <div class="stats-section-title">🍱 サイズ別　月間合計・割合</div>
+      ${sizeCards}
+    </div>`;
+}
+
+// ── 定期注文フォーム ─────────────────────────────────────────
+function renderSettings() {
+  const tmpls=getTemplates();
+  document.getElementById('setting-grid').innerHTML=REPEAT_LIST.map(f => {
+    const tmpl=tmpls[f], has=!!tmpl;
+    const ls=tmpl?.lunch?.s||0, lr=tmpl?.lunch?.r||0, ll=tmpl?.lunch?.l||0;
+    const ds=tmpl?.dinner?.s||0, dr=tmpl?.dinner?.r||0, dl=tmpl?.dinner?.l||0;
+    const lt=ls+lr+ll, dt=ds+dr+dl;
+    const activeDays=tmpl?.days||[1,2,3,4,5]; // default: 月〜金
+
+    const dayChips=DAYS_JP.map((d,i) => {
+      const isActive=activeDays.includes(i);
+      const extra=i===0?'sun':i===6?'sat':'';
+      return `<button class="day-chip ${extra} ${isActive?'active':''}" id="dc-${f}-${i}" onclick="toggleDay('${f}',${i})">${d}</button>`;
+    }).join('');
+
+    const summary=has
+      ? `<div class="setting-summary">
+           ☀️ 昼食　<strong>${lt}食</strong>（半盛${ls} ／ 普通${lr} ／ 大盛${ll}）<br>
+           🌙 夕食　<strong>${dt}食</strong>（半盛${ds} ／ 普通${dr} ／ 大盛${dl}）
+         </div>`
+      : `<div class="setting-summary" style="color:var(--muted);">まだ設定されていません</div>`;
+
+    return `<div class="setting-card ${has?'has-tmpl':''}" id="scard-${f}">
+      <div class="setting-card-title">
+        <div class="setting-facility">${f}</div>
+        <span class="tmpl-badge ${has?'set':'unset'}">${has?'✓ 設定済み':'未設定'}</span>
+      </div>
+
+      <div class="day-selector">
+        <div class="day-selector-label">注文曜日</div>
+        <div class="day-chips">${dayChips}</div>
+      </div>
+
+      ${summary}
+
+      <div class="setting-meal">
+        <div class="setting-meal-label"><span class="meal-badge badge-lunch" style="font-size:12px;padding:3px 10px;">☀️ 昼食</span></div>
+        <div class="setting-size-row">
+          ${['半盛','普通','大盛'].map((lbl,i) => {
+            const key=['ls','lr','ll'][i], val=[ls,lr,ll][i];
+            return `<div class="setting-size-item"><div class="setting-size-lbl">${lbl}</div>
+              <div class="setting-qty-ctrl">
+                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',-1)">−</button>
+                <input class="setting-qty-num" type="number" id="s-${f}-${key}" value="${val}" min="0">
+                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',1)">＋</button>
+              </div></div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="setting-meal">
+        <div class="setting-meal-label"><span class="meal-badge badge-dinner" style="font-size:12px;padding:3px 10px;">🌙 夕食</span></div>
+        <div class="setting-size-row">
+          ${['半盛','普通','大盛'].map((lbl,i) => {
+            const key=['ds','dr','dl'][i], val=[ds,dr,dl][i];
+            return `<div class="setting-size-item"><div class="setting-size-lbl">${lbl}</div>
+              <div class="setting-qty-ctrl">
+                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',-1)">−</button>
+                <input class="setting-qty-num" type="number" id="s-${f}-${key}" value="${val}" min="0">
+                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',1)">＋</button>
+              </div></div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="setting-actions">
+        <button class="btn btn-success btn-sm" style="flex:1" onclick="saveTemplate('${f}')">
+          ${has?'更新する':'設定する'}
+        </button>
+        ${has?`<button class="btn btn-ghost btn-sm" onclick="confirmReset('${f}')">削除</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// 曜日チップのトグル（保存せず表示だけ更新）
+function toggleDay(f, i) {
+  const el=document.getElementById(`dc-${f}-${i}`);
+  el.classList.toggle('active');
+}
+
+function sadj(f, key, delta) {
+  const el=document.getElementById(`s-${f}-${key}`);
+  if (!el) return;
+  el.value=Math.max(0,(parseInt(el.value)||0)+delta);
+}
+
+function getActiveDays(f) {
+  return [0,1,2,3,4,5,6].filter(i => document.getElementById(`dc-${f}-${i}`)?.classList.contains('active'));
+}
+
+function saveTemplate(f) {
+  const get=k => parseInt(document.getElementById(`s-${f}-${k}`)?.value)||0;
+  const ls=get('ls'),lr=get('lr'),ll=get('ll'),ds=get('ds'),dr=get('dr'),dl=get('dl');
+  if (ls+lr+ll+ds+dr+dl===0) { toast('注文数を1以上入力してください','ng'); return; }
+  const days=getActiveDays(f);
+  if (days.length===0) { toast('注文曜日を1日以上選択してください','ng'); return; }
+  const t=getTemplates();
+  t[f]={lunch:{s:ls,r:lr,l:ll},dinner:{s:ds,r:dr,l:dl},days};
+  saveTemplates(t);
+  renderSettings();
+  toast(`${f} の定期注文を保存しました ✓`,'ok');
+}
+
+function confirmReset(f) {
+  pendingReset=f;
+  document.getElementById('modal-reset-msg').textContent=`「${f}」のテンプレートを削除しますか？管理画面への自動反映がなくなります。`;
+  document.getElementById('modal-reset').classList.add('show');
+}
+function doResetTemplate() {
+  if (!pendingReset) return;
+  const t=getTemplates(); delete t[pendingReset]; saveTemplates(t);
+  toast(`${pendingReset} の定期注文を削除しました`,'ok');
+  pendingReset=null;
+  document.getElementById('modal-reset').classList.remove('show');
+  renderSettings();
+}
+
+// ── 曜日別内訳トグル ──────────────────────────────────────
+function toggleDayDetail(uid, headerRow) {
+  const subRows = document.querySelectorAll(`tr[id="${uid}"]`);
+  const icon    = headerRow.querySelector('.day-toggle-icon');
+  const isOpen  = subRows.length > 0 && subRows[0].style.display !== 'none';
+  subRows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
+  if (icon) icon.textContent = isOpen ? '▼ 内訳' : '▲ 閉じる';
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function toast(msg, type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast show '+type;
+  setTimeout(() => el.className='toast', 3200);
+}
+
+initFirebase();
+</script>
+</body>
+</html>
