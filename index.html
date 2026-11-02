@@ -1293,7 +1293,7 @@ function init() {
   const ym = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   document.getElementById('m-month').value = ym;
   document.getElementById('s-month').value = ym;
-  calcTotals(); renderAdmin(); renderHistory(); renderSettings();
+  calcTotals(); renderAdmin(); renderHistory(); renderSettings(); renderMemberMaster();
 }
 
 // ── Page Nav ──────────────────────────────────────────────
@@ -3091,6 +3091,4 @@ function toast(msg, type='') {
 }
 
 initFirebase();
-</script>
-</body>
-</html>
+</sc
