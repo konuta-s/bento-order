@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -195,6 +195,8 @@
     ══════════════════════════════════ */
     /* tabs */
     .h-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+    .admin-sub-panel { }
+    #page-admin > .h-tabs { margin-bottom: 0; background: var(--surface); border-radius: 12px 12px 0 0; padding: 8px 12px 0; border-bottom: 2px solid var(--border); }
     .h-tab  { padding: 9px 18px; border: none; background: none; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; font-family: inherit; border-radius: 6px 6px 0 0; }
     .h-tab:hover  { color: var(--text); background: var(--bg); }
     .h-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-light); }
@@ -474,8 +476,6 @@
     <button class="nav-btn"         onclick="showPage('menu',    this)">献立</button>
     <button class="nav-btn"         onclick="showPage('guide',   this)">取説</button>
     <button class="nav-btn"         onclick="requirePin(this)">管理画面</button>
-    <button class="nav-btn"         onclick="showPage('history', this)">履歴</button>
-    <button class="nav-btn"         onclick="requirePin(this,'master')">マスタ</button>
   </div>
 </nav>
 
@@ -622,8 +622,17 @@
 
   <!-- ═══════ 管理画面 ═══════ -->
   <div id="page-admin" class="page">
+    <!-- サブタブバー -->
+    <div class="h-tabs" style="margin-bottom:0;border-radius:12px 12px 0 0;">
+      <button class="h-tab active" id="admin-sub-btn-admin"   onclick="showAdminSub('admin')">🏢 管理</button>
+      <button class="h-tab"        id="admin-sub-btn-history" onclick="showAdminSub('history')">📋 履歴</button>
+      <button class="h-tab"        id="admin-sub-btn-master"  onclick="showAdminSub('master')">⚙️ マスタ</button>
+    </div>
+
+    <!-- 管理サブパネル -->
+    <div id="admin-sub-admin" class="admin-sub-panel">
     <div class="card">
-      <h2>管理画面</h2>
+      <h2 style="display:none;">管理画面</h2>
 
       <div class="date-nav">
         <button class="date-arrow" onclick="shiftDay(-1)">‹</button>
@@ -663,12 +672,12 @@
         <div class="legend-item"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--danger);vertical-align:middle;"></span> アレルギー記載あり（左枠）</div>
       </div>
     </div>
-  </div>
+    </div><!-- /admin-sub-admin -->
 
-  <!-- ═══════ 履歴 ═══════ -->
-  <div id="page-history" class="page">
+    <!-- 履歴サブパネル -->
+    <div id="admin-sub-history" class="admin-sub-panel" style="display:none;">
     <div class="card">
-      <h2>注文履歴</h2>
+      <h2 style="display:none;">注文履歴</h2>
 
       <div class="h-tabs">
         <button class="h-tab active" onclick="switchHTab('list',this)">📋 注文一覧</button>
@@ -715,10 +724,10 @@
         <div id="stats-out"></div>
       </div>
     </div>
-  </div>
+    </div><!-- /admin-sub-history -->
 
-  <!-- ═══════ マスタ ═══════ -->
-  <div id="page-master" class="page">
+    <!-- マスタサブパネル -->
+    <div id="admin-sub-master" class="admin-sub-panel" style="display:none;">
 
     <!-- 事業所管理 -->
     <div class="card">
@@ -758,7 +767,9 @@
       <div id="master-member-area"></div>
     </div>
 
-  </div>
+    </div><!-- /admin-sub-master -->
+
+  </div><!-- /page-admin -->
 
   <!-- ═══════ 定期注文フォーム ═══════ -->
   <div id="page-setting" class="page">
@@ -1180,7 +1191,8 @@ function refreshSelects() {
   });
   const mView = document.getElementById('m-view');
   const curM = mView.value;
-  while (mView.options.length > 1) mView.remove(1);
+  // option[0]=全体, option[1]=メンバー別 は固定。2以降をFACILITIESで差し替え
+  while (mView.options.length > 2) mView.remove(2);
   FACILITIES.forEach(f => { const o=document.createElement('option'); o.value=f; o.textContent=f; mView.appendChild(o); });
   mView.value = curM;
 }
@@ -1300,24 +1312,44 @@ function init() {
 function showPage(page, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (page==='admin')   renderAdmin();
-  if (page==='history') renderHistory();
-  if (page==='setting') renderSettings();
-  if (page==='master')  renderMaster();
+  const adminPages = ['admin','history','master'];
+  if (adminPages.includes(page)) {
+    document.getElementById('page-admin').classList.add('active');
+    const sub = (page==='history') ? 'history' : (page==='master') ? 'master' : 'admin';
+    showAdminSub(sub, true);
+    if (page==='admin')   renderAdmin();
+    if (page==='history') renderHistory();
+    if (page==='master')  renderMaster();
+  } else {
+    document.getElementById('page-'+page).classList.add('active');
+    if (page==='setting') renderSettings();
+  }
+}
+
+function showAdminSub(sub, skipRender) {
+  ['admin','history','master'].forEach(s => {
+    const panel = document.getElementById('admin-sub-'+s);
+    const btn   = document.getElementById('admin-sub-btn-'+s);
+    if (panel) panel.style.display = s===sub ? '' : 'none';
+    if (btn)   btn.classList.toggle('active', s===sub);
+  });
+  if (!skipRender) {
+    if (sub==='admin')   renderAdmin();
+    if (sub==='history') renderHistory();
+    if (sub==='master')  renderMaster();
+  }
 }
 
 // ── PIN ───────────────────────────────────────────────────
 function requirePin(btn, targetPage='admin') {
-  if (targetPage==='admin'  && adminUnlocked)  { showPage('admin',  btn); return; }
-  if (targetPage==='master' && masterUnlocked) { showPage('master', btn); return; }
+  if (adminUnlocked) { showPage(targetPage, btn); return; }
   pendingNavBtn  = btn;
   pendingPinPage = targetPage;
   pinBuffer = '';
   updatePinDots();
   document.getElementById('pin-error').textContent = '';
-  document.getElementById('pin-title').textContent = targetPage==='master' ? 'マスタ' : '管理画面';
+  document.getElementById('pin-title').textContent = '管理画面';
   document.getElementById('pin-sub').textContent   = '暗証番号を入力してください';
   document.getElementById('pin-overlay').classList.add('show');
 }
@@ -1346,8 +1378,8 @@ function updatePinDots() {
 function checkPin() {
   if (pinBuffer === getPin()) {
     document.getElementById('pin-overlay').classList.remove('show');
-    if (pendingPinPage === 'master') masterUnlocked = true;
-    else adminUnlocked = true;
+    adminUnlocked = true;
+    masterUnlocked = true;
     showPage(pendingPinPage, pendingNavBtn);
     pendingNavBtn = null;
     pinBuffer = '';
@@ -1536,8 +1568,10 @@ function printAdmin() {
 }
 
 function lockAdmin() {
-  adminUnlocked = false;
-  showPage('order', document.querySelector('.nav-btn'));
+  adminUnlocked  = false;
+  masterUnlocked = false;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-order').classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.nav-btn').classList.add('active');
   toast('管理画面をロックしました','ok');
@@ -2146,21 +2180,24 @@ function renderAdmin() {
 
     // タッパーバッジを計セルに付与
     // メンバー詳細行
-    const facMembers = (getMembers()[f] || []);
+    const facMembersObj = (getMembers()[f] || {});
+    const facMembers = Object.entries(facMembersObj).map(([id, m]) => ({...m, id}));
     const memberOverrides = (getOrders()[date]?.[f]?.members) || {};
     let memberDetailHtml = '';
     if (facMembers.length > 0) {
+      const dispNames = buildDisplayNames(facMembersObj);
       const memberRows = facMembers.map(m => {
         const ov  = memberOverrides[m.id] || {};
         const cancelled = ov.cancelled === true;
-        const lSize = cancelled ? null : (ov.lunch  !== undefined ? ov.lunch  : m.lunch);
-        const dSize = cancelled ? null : (ov.dinner !== undefined ? ov.dinner : m.dinner);
+        const lSize = cancelled ? null : (ov.lunch  !== undefined ? ov.lunch  : m.lunchSize  || '');
+        const dSize = cancelled ? null : (ov.dinner !== undefined ? ov.dinner : m.dinnerSize || '');
         const sizeLabel = { s:'半盛', r:'普通', l:'大盛', null:'−' };
         const cancelStyle = cancelled ? 'opacity:0.4;text-decoration:line-through;' : '';
+        const disp = m.name || m.id;
         return `<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;background:${cancelled?'#f8fafc':'white'};margin-bottom:3px;${cancelStyle}">
-          <span style="font-size:13px;font-weight:700;color:#1e293b;min-width:80px;">${esc(m.name)}</span>
-          <span style="font-size:12px;color:#64748b;">☀️ ${sizeLabel[lSize]||'−'}</span>
-          <span style="font-size:12px;color:#64748b;">🌙 ${sizeLabel[dSize]||'−'}</span>
+          <span style="font-size:13px;font-weight:700;color:#1e293b;min-width:80px;">${esc(disp)}</span>
+          ${lSize?`<span style="font-size:12px;color:#64748b;">☀️ ${sizeLabel[lSize]}</span>`:''}
+          ${dSize?`<span style="font-size:12px;color:#64748b;">🌙 ${sizeLabel[dSize]}</span>`:`<span style="font-size:12px;color:#64748b;">🌙 −</span>`}
           ${cancelled?'<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;padding:1px 6px;">キャンセル</span>':''}
           <button onclick="toggleMemberCancel('${esc(f)}','${date}','${esc(m.id)}')" style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid ${cancelled?'#16a34a':'#e2e8f0'};border-radius:5px;background:white;color:${cancelled?'#16a34a':'#64748b'};cursor:pointer;font-weight:600;">${cancelled?'戻す':'キャンセル'}</button>
         </div>`;
@@ -2223,6 +2260,30 @@ function toggleMemberDetail(f, date) {
 }
 
 // ── 個人キャンセル ────────────────────────────────────────
+// 事業所内で名字が重複する場合は「名字＋名前の頭文字」で表示
+function buildDisplayNames(fMembers) {
+  const nameMap = {}; // id -> 表示名
+  const lastNames = {};
+  Object.entries(fMembers).forEach(([id, m]) => {
+    const parts = (m.name || '').trim().split(/\s+/);
+    const last = parts[0] || m.name || id;
+    if (!lastNames[last]) lastNames[last] = [];
+    lastNames[last].push({ id, name: m.name || '', parts });
+  });
+  Object.values(lastNames).forEach(group => {
+    if (group.length === 1) {
+      nameMap[group[0].id] = group[0].parts[0] || group[0].name;
+    } else {
+      group.forEach(({ id, parts }) => {
+        const last = parts[0] || '';
+        const initial = parts[1] ? parts[1][0] : (parts[0]?.slice(-1) || '');
+        nameMap[id] = last + initial;
+      });
+    }
+  });
+  return nameMap;
+}
+
 function toggleMemberCancel(f, date, memberId) {
   const orders = getOrders();
   const entry  = orders[date]?.[f] || {};
@@ -2473,7 +2534,7 @@ function renderMonthly() {
   }
 
   if (fac === '__members__') {
-    // ── メンバー別ビュー ────────────────────────────────
+    // ── メンバー別ビュー（日付縦×メンバー横） ────────────────────────────────
     const orders = getOrders();
     const members = getMembers();
     const sortedDates = [...new Set(allItems.map(i=>i.date))].sort();
@@ -2488,42 +2549,65 @@ function renderMonthly() {
       const fmembers = members[f] || {};
       const mIds = Object.keys(fmembers);
       if (!mIds.length) return '';
+      const dispNames = buildDisplayNames(fmembers);
 
-      const rows = mIds.map(id => {
-        const m = fmembers[id];
-        let lunchCount = 0, dinnerCount = 0, cancelCount = 0;
-        sortedDates.forEach(date => {
-          const entry = orders[date]?.[f];
-          if (!entry) return;
-          const mo = entry.members?.[id];
-          if (mo?.cancelled) { cancelCount++; return; }
-          // if facility has orders for this date, count member
-          if (lT(entry) > 0 || dT(entry) > 0) {
-            if (m.lunchSize) lunchCount++;
-            if (m.dinnerSize) dinnerCount++;
+      // 集計（合計行用）
+      const totals = {}; // { id: { dinner, cancel } }
+      mIds.forEach(id => { totals[id] = { dinner:0, cancel:0 }; });
+
+      // 日付×メンバーのセル
+      const rows = sortedDates.map(date => {
+        const dt = new Date(date+'T00:00:00');
+        const entry = orders[date]?.[f];
+        const cells = mIds.map(id => {
+          const m = fmembers[id];
+          const mo = entry?.members?.[id];
+          if (mo?.cancelled) {
+            totals[id].cancel++;
+            return `<td style="text-align:center;color:#dc2626;font-size:12px;">✕</td>`;
           }
-        });
+          if (!entry || (!lT(entry) && !dT(entry))) {
+            return `<td style="text-align:center;color:var(--muted);font-size:12px;">−</td>`;
+          }
+          const dSize = (mo?.dinner !== undefined) ? mo.dinner : (m.dinnerSize || '');
+          if (!dSize) {
+            return `<td style="text-align:center;color:var(--muted);font-size:12px;">−</td>`;
+          }
+          totals[id].dinner++;
+          const sizeLabel = {s:'小',r:'普',l:'大'};
+          return `<td style="text-align:center;font-size:12px;color:#7c3aed;font-weight:600;">🌙${sizeLabel[dSize]||dSize}</td>`;
+        }).join('');
         return `<tr>
-          <td style="font-weight:600;">${esc(m.name||id)}</td>
-          <td class="td-l">${lunchCount||'−'}</td>
-          <td class="td-d">${dinnerCount||'−'}</td>
-          <td style="color:${cancelCount?'#dc2626':'var(--muted)'};">${cancelCount||'−'}</td>
-          <td>${lunchCount+dinnerCount}</td>
+          <td>${date}（${DAYS_JP[dt.getDay()]}）</td>
+          ${cells}
         </tr>`;
       }).join('');
 
-      return `<div style="margin-bottom:20px;">
+      // 合計行
+      const totalCells = mIds.map(id => {
+        const t = totals[id];
+        const cancelBadge = t.cancel ? `<br><span style="color:#dc2626;font-size:11px;">✕${t.cancel}</span>` : '';
+        return `<td style="text-align:center;font-weight:700;">${t.dinner}${cancelBadge}</td>`;
+      }).join('');
+
+      // ヘッダー行（名前）
+      const headerCells = mIds.map(id => {
+        return `<th style="min-width:52px;font-size:12px;">${esc(dispNames[id]||fmembers[id]?.name||id)}</th>`;
+      }).join('');
+
+      return `<div style="margin-bottom:28px;">
         <div style="font-weight:700;font-size:15px;margin-bottom:8px;">${esc(f)}</div>
         <div class="month-tbl-wrap">
           <table class="month-tbl">
             <thead><tr>
-              <th style="text-align:left;">名前</th>
-              <th style="background:#92400e;">☀️昼食日数</th>
-              <th style="background:#4c1d95;">🌙夕食日数</th>
-              <th style="background:#dc2626;color:white;">キャンセル数</th>
-              <th>合計食数</th>
+              <th style="text-align:left;min-width:120px;">日付</th>
+              ${headerCells}
             </tr></thead>
             <tbody>${rows}</tbody>
+            <tfoot><tr>
+              <td style="font-weight:700;">合計</td>
+              ${totalCells}
+            </tr></tfoot>
           </table>
         </div>
       </div>`;
@@ -2543,8 +2627,10 @@ function renderMonthly() {
     let tlS=0,tlR=0,tlL=0,tdS=0,tdR=0,tdL=0;
     items.forEach(i=>{tlS+=i.lunch?.s||0;tlR+=i.lunch?.r||0;tlL+=i.lunch?.l||0;tdS+=i.dinner?.s||0;tdR+=i.dinner?.r||0;tdL+=i.dinner?.l||0;});
     const tL=tlS+tlR+tlL, tD=tdS+tdR+tdL, dates=new Set(items.map(i=>i.date)).size;
+    const lDates=new Set(items.filter(i=>(i.lunch?.s||0)+(i.lunch?.r||0)+(i.lunch?.l||0)>0).map(i=>i.date)).size;
+    const dDates=new Set(items.filter(i=>(i.dinner?.s||0)+(i.dinner?.r||0)+(i.dinner?.l||0)>0).map(i=>i.date)).size;
 
-    const summHtml=buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,dates,fac);
+    const summHtml=buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,lDates,dDates,fac);
 
     const sortedDates=[...new Set(items.map(i=>i.date))].sort();
     const rows=sortedDates.map(date=>{
@@ -2592,9 +2678,10 @@ function renderMonthly() {
     let tlS=0,tlR=0,tlL=0,tdS=0,tdR=0,tdL=0;
     allItems.forEach(i=>{tlS+=i.lunch?.s||0;tlR+=i.lunch?.r||0;tlL+=i.lunch?.l||0;tdS+=i.dinner?.s||0;tdR+=i.dinner?.r||0;tdL+=i.dinner?.l||0;});
     const tL=tlS+tlR+tlL, tD=tdS+tdR+tdL;
-    const dates=new Set(allItems.map(i=>i.date)).size;
+    const lDates=new Set(allItems.filter(i=>(i.lunch?.s||0)+(i.lunch?.r||0)+(i.lunch?.l||0)>0).map(i=>i.date)).size;
+    const dDates=new Set(allItems.filter(i=>(i.dinner?.s||0)+(i.dinner?.r||0)+(i.dinner?.l||0)>0).map(i=>i.date)).size;
 
-    const summHtml=buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,dates,'全体');
+    const summHtml=buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,lDates,dDates,'全体');
 
     // 事業所別月間集計テーブル
     const facRows=FACILITIES.map(f=>{
@@ -2668,30 +2755,33 @@ function renderMonthly() {
   }
 }
 
-function buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,dates,label) {
+function buildSummaryCards(y,m,tlS,tlR,tlL,tdS,tdR,tdL,lDates,dDates,label) {
   const tL=tlS+tlR+tlL, tD=tdS+tdR+tdL;
+  const totalDates = new Set([...(lDates>0?[1]:[]), ...(dDates>0?[2]:[])]).size; // just for display
+  const lAvg = lDates>0?(tL/lDates).toFixed(1):'−';
+  const dAvg = dDates>0?(tD/dDates).toFixed(1):'−';
   return `
     <div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:10px;">${y}年${m}月　${label}</div>
     <div class="month-summary-row">
       <div class="month-summary-box" style="border-top:3px solid #f59e0b;">
         <div class="msb-label">☀️ 昼食 合計</div>
         <div class="msb-value">${tL}<span>食</span></div>
-        <div class="msb-sub">小${tlS} ／ 普${tlR} ／ 大${tlL}</div>
+        <div class="msb-sub">小${tlS} ／ 普${tlR} ／ 大${tlL}（${lDates}日分）</div>
       </div>
       <div class="month-summary-box" style="border-top:3px solid #7c3aed;">
         <div class="msb-label">🌙 夕食 合計</div>
         <div class="msb-value">${tD}<span>食</span></div>
-        <div class="msb-sub">小${tdS} ／ 普${tdR} ／ 大${tdL}</div>
+        <div class="msb-sub">小${tdS} ／ 普${tdR} ／ 大${tdL}（${dDates}日分）</div>
       </div>
       <div class="month-summary-box" style="border-top:3px solid #1d4ed8;">
         <div class="msb-label">📦 月間合計</div>
         <div class="msb-value">${tL+tD}<span>食</span></div>
-        <div class="msb-sub">注文日数 ${dates}日</div>
+        <div class="msb-sub">昼${lDates}日 ／ 夕${dDates}日</div>
       </div>
       <div class="month-summary-box" style="border-top:3px solid #16a34a;">
         <div class="msb-label">📆 1日平均</div>
-        <div class="msb-value">${dates>0?((tL+tD)/dates).toFixed(1):0}<span>食</span></div>
-        <div class="msb-sub">昼${dates>0?(tL/dates).toFixed(1):0} ／ 夕${dates>0?(tD/dates).toFixed(1):0}</div>
+        <div class="msb-value">${dDates>0?(tD/dDates).toFixed(1):'−'}<span>食</span></div>
+        <div class="msb-sub">昼${lAvg} ／ 夕${dAvg}</div>
       </div>
     </div>`;
 }
@@ -2707,34 +2797,47 @@ function exportCSV() {
   const to    = `${ym}-${String(lastD).padStart(2,'0')}`;
 
   if (fac === '__members__') {
-    // メンバー別CSV
+    // メンバー別CSV（事業所ごとに 日付縦×メンバー横）
     const orders  = getOrders();
     const members = getMembers();
-    const allItems = getEffectiveItems(from, to);
-    const sortedDates = [...new Set(allItems.map(i=>i.date))].sort();
+    const allItemsM = getEffectiveItems(from, to);
+    const sortedDates = [...new Set(allItemsM.map(i=>i.date))].sort();
     const allFacs = FACILITIES.filter(f => members[f] && Object.keys(members[f]).length > 0);
     if (!allFacs.length) { toast('メンバーが登録されていません','ng'); return; }
 
-    const header = ['事業所','名前','昼食日数','夕食日数','キャンセル数','合計食数'];
-    const rows = [];
+    const sizeLabel = {s:'小',r:'普',l:'大'};
+    const csvBlocks = [];
     allFacs.forEach(f => {
       const fmembers = members[f] || {};
-      Object.entries(fmembers).forEach(([id, mem]) => {
-        let lunchCount=0, dinnerCount=0, cancelCount=0;
-        sortedDates.forEach(date => {
-          const entry = orders[date]?.[f];
-          if (!entry) return;
-          const mo = entry.members?.[id];
-          if (mo?.cancelled) { cancelCount++; return; }
-          if (lT(entry) > 0 || dT(entry) > 0) {
-            if (mem.lunchSize) lunchCount++;
-            if (mem.dinnerSize) dinnerCount++;
-          }
+      const mIds = Object.keys(fmembers);
+      if (!mIds.length) return;
+      const names = mIds.map(id => `"${(fmembers[id]?.name||id).replace(/"/g,'""')}"`);
+      csvBlocks.push([`"${f}"`, ...names].join(','));
+      const totals = {};
+      mIds.forEach(id => { totals[id] = { dinner:0, cancel:0 }; });
+      sortedDates.forEach(date => {
+        const dt = new Date(date+'T00:00:00');
+        const entry = orders[date]?.[f];
+        const cells = mIds.map(id => {
+          const mem = fmembers[id];
+          const mo = entry?.members?.[id];
+          if (mo?.cancelled) { totals[id].cancel++; return '"✕"'; }
+          if (!entry || (!lT(entry) && !dT(entry))) return '"−"';
+          const dSize = (mo?.dinner !== undefined) ? mo.dinner : (mem.dinnerSize || '');
+          if (!dSize) return '"−"';
+          totals[id].dinner++;
+          return `"🌙${sizeLabel[dSize]||dSize}"`;
         });
-        rows.push([f, mem.name||id, lunchCount, dinnerCount, cancelCount, lunchCount+dinnerCount].join(','));
+        csvBlocks.push([`"${date}(${DAYS_JP[dt.getDay()]})"`, ...cells].join(','));
       });
+      const totalCells = mIds.map(id => {
+        const t = totals[id];
+        return `"夕${t.dinner}食${t.cancel?'/✕'+t.cancel:''}"`;
+      });
+      csvBlocks.push(['"合計"', ...totalCells].join(','));
+      csvBlocks.push('');
     });
-    const csv = '﻿' + [header.join(','), ...rows].join('\n');
+    const csv = '﻿' + csvBlocks.join('\n');
     const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -2955,80 +3058,131 @@ function renderStats() {
 
 // ── 定期注文フォーム ─────────────────────────────────────────
 function renderSettings() {
-  const tmpls=getTemplates();
-  document.getElementById('setting-grid').innerHTML=REPEAT_LIST.map(f => {
-    const tmpl=tmpls[f], has=!!tmpl;
-    const ls=tmpl?.lunch?.s||0, lr=tmpl?.lunch?.r||0, ll=tmpl?.lunch?.l||0;
-    const ds=tmpl?.dinner?.s||0, dr=tmpl?.dinner?.r||0, dl=tmpl?.dinner?.l||0;
-    const lt=ls+lr+ll, dt=ds+dr+dl;
-    const activeDays=tmpl?.days||[1,2,3,4,5]; // default: 月〜金
+  const tmpls   = getTemplates();
+  const members = getMembers();
+  document.getElementById('setting-grid').innerHTML = REPEAT_LIST.map(f => {
+    const tmpl       = tmpls[f], has = !!tmpl;
+    const paused     = tmpl?.membersPaused || {};
+    const activeDays = tmpl?.days || [1,2,3,4,5];
+    const fMembers   = members[f] || {};
+    const hasMember  = Object.keys(fMembers).length > 0;
 
-    const dayChips=DAYS_JP.map((d,i) => {
-      const isActive=activeDays.includes(i);
-      const extra=i===0?'sun':i===6?'sat':'';
+    const dayChips = DAYS_JP.map((d,i) => {
+      const isActive = activeDays.includes(i);
+      const extra = i===0?'sun':i===6?'sat':'';
       return `<button class="day-chip ${extra} ${isActive?'active':''}" id="dc-${f}-${i}" onclick="toggleDay('${f}',${i})">${d}</button>`;
     }).join('');
 
-    const summary=has
-      ? `<div class="setting-summary">
-           ☀️ 昼食　<strong>${lt}食</strong>（半盛${ls} ／ 普通${lr} ／ 大盛${ll}）<br>
-           🌙 夕食　<strong>${dt}食</strong>（半盛${ds} ／ 普通${dr} ／ 大盛${dl}）
-         </div>`
-      : `<div class="setting-summary" style="color:var(--muted);">まだ設定されていません</div>`;
+    if (hasMember) {
+      const sizeLabel = {s:'半盛',r:'普通',l:'大盛','':'なし'};
+      const dispNames = buildDisplayNames(fMembers);
+      const memberRows = Object.entries(fMembers).map(([id, m]) => {
+        const isActive = !paused[id];
+        const lSize = m.lunchSize||'', dSize = m.dinnerSize||'';
+        const disp = dispNames[id] || m.name || id;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">
+            <input type="checkbox" id="mp-${f}-${id}" ${isActive?'checked':''} onchange="recalcTemplate('${f}')"
+              style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;">
+            <span style="font-size:14px;font-weight:600;${!isActive?'color:var(--muted);text-decoration:line-through;':''}">${esc(disp)}</span>
+          </label>
+          ${lSize?`<span style="font-size:12px;color:#f59e0b;background:#fef3c7;padding:2px 7px;border-radius:20px;white-space:nowrap;font-weight:700;">☀️ ${sizeLabel[lSize]}</span>`:''}
+          <span style="font-size:12px;color:#7c3aed;background:#ede9fe;padding:2px 10px;border-radius:20px;white-space:nowrap;font-weight:700;">🌙 ${dSize?sizeLabel[dSize]:'なし'}</span>
+        </div>`;
+      }).join('');
 
-    return `<div class="setting-card ${has?'has-tmpl':''}" id="scard-${f}">
-      <div class="setting-card-title">
-        <div class="setting-facility">${f}</div>
-        <span class="tmpl-badge ${has?'set':'unset'}">${has?'✓ 設定済み':'未設定'}</span>
-      </div>
-
-      <div class="day-selector">
-        <div class="day-selector-label">注文曜日</div>
-        <div class="day-chips">${dayChips}</div>
-      </div>
-
-      ${summary}
-
-      <div class="setting-meal">
-        <div class="setting-meal-label"><span class="meal-badge badge-lunch" style="font-size:12px;padding:3px 10px;">☀️ 昼食</span></div>
-        <div class="setting-size-row">
-          ${['半盛','普通','大盛'].map((lbl,i) => {
-            const key=['ls','lr','ll'][i], val=[ls,lr,ll][i];
-            return `<div class="setting-size-item"><div class="setting-size-lbl">${lbl}</div>
-              <div class="setting-qty-ctrl">
-                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',-1)">−</button>
-                <input class="setting-qty-num" type="number" id="s-${f}-${key}" value="${val}" min="0">
-                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',1)">＋</button>
-              </div></div>`;
-          }).join('')}
+      const totals = calcMemberTotals(f, paused);
+      return `<div class="setting-card ${has?'has-tmpl':''}" id="scard-${f}">
+        <div class="setting-card-title">
+          <div class="setting-facility">${f}</div>
+          <span class="tmpl-badge ${has?'set':'unset'}">${has?'✓ 設定済み':'未設定'}</span>
         </div>
-      </div>
-
-      <hr class="divider">
-
-      <div class="setting-meal">
-        <div class="setting-meal-label"><span class="meal-badge badge-dinner" style="font-size:12px;padding:3px 10px;">🌙 夕食</span></div>
-        <div class="setting-size-row">
-          ${['半盛','普通','大盛'].map((lbl,i) => {
-            const key=['ds','dr','dl'][i], val=[ds,dr,dl][i];
-            return `<div class="setting-size-item"><div class="setting-size-lbl">${lbl}</div>
-              <div class="setting-qty-ctrl">
-                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',-1)">−</button>
-                <input class="setting-qty-num" type="number" id="s-${f}-${key}" value="${val}" min="0">
-                <button class="setting-qty-btn" onclick="sadj('${f}','${key}',1)">＋</button>
-              </div></div>`;
-          }).join('')}
+        <div class="day-selector"><div class="day-selector-label">注文曜日</div><div class="day-chips">${dayChips}</div></div>
+        <div id="tmpl-summary-${f}" style="background:#f8fafc;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;">${renderMemberSummary(totals)}</div>
+        <div style="margin:12px 0 6px;font-size:13px;font-weight:700;color:var(--muted);">メンバー一覧　<span style="font-weight:400;font-size:12px;">チェックを外すと定期注文から除外</span></div>
+        <div style="margin-bottom:12px;">${memberRows}</div>
+        <div class="setting-actions">
+          <button class="btn btn-success btn-sm" style="flex:1" onclick="saveTemplateFromMembers('${f}')">${has?'更新する':'設定する'}</button>
+          ${has?`<button class="btn btn-ghost btn-sm" onclick="confirmReset('${f}')">削除</button>`:''}
         </div>
-      </div>
-
-      <div class="setting-actions">
-        <button class="btn btn-success btn-sm" style="flex:1" onclick="saveTemplate('${f}')">
-          ${has?'更新する':'設定する'}
-        </button>
-        ${has?`<button class="btn btn-ghost btn-sm" onclick="confirmReset('${f}')">削除</button>`:''}
-      </div>
-    </div>`;
+      </div>`;
+    } else {
+      const ls=tmpl?.lunch?.s||0, lr=tmpl?.lunch?.r||0, ll=tmpl?.lunch?.l||0;
+      const ds=tmpl?.dinner?.s||0, dr=tmpl?.dinner?.r||0, dl=tmpl?.dinner?.l||0;
+      const lt=ls+lr+ll, dt=ds+dr+dl;
+      const summary = has
+        ? `<div class="setting-summary">☀️ 昼食　<strong>${lt}食</strong>（半盛${ls} ／ 普通${lr} ／ 大盛${ll}）<br>🌙 夕食　<strong>${dt}食</strong>（半盛${ds} ／ 普通${dr} ／ 大盛${dl}）</div>`
+        : `<div class="setting-summary" style="color:var(--muted);">まだ設定されていません</div>`;
+      return `<div class="setting-card ${has?'has-tmpl':''}" id="scard-${f}">
+        <div class="setting-card-title"><div class="setting-facility">${f}</div><span class="tmpl-badge ${has?'set':'unset'}">${has?'✓ 設定済み':'未設定'}</span></div>
+        <div class="day-selector"><div class="day-selector-label">注文曜日</div><div class="day-chips">${dayChips}</div></div>
+        ${summary}
+        <div class="setting-meal"><div class="setting-meal-label"><span class="meal-badge badge-lunch" style="font-size:12px;padding:3px 10px;">☀️ 昼食</span></div>
+          <div class="setting-size-row">${['半盛','普通','大盛'].map((lbl,i)=>{const key=['ls','lr','ll'][i],val=[ls,lr,ll][i];return`<div class="setting-size-item"><div class="setting-size-lbl">${lbl}</div><div class="setting-qty-ctrl"><button class="setting-qty-btn" onclick="sadj('${f}','${key}',-1)">−</button><input class="setting-qty-num" type="number" id="s-${f}-${key}" value="${val}" min="0"><button class="setting-qty-btn" onclick="sadj('${f}','${key}',1)">＋</button></div></div>`;}).join('')}</div>
+        </div>
+        <hr class="divider">
+        <div class="setting-meal"><div class="setting-meal-label"><span class="meal-badge badge-dinner" style="font-size:12px;padding:3px 10px;">🌙 夕食</span></div>
+          <div class="setting-size-row">${['半盛','普通','大盛'].map((lbl,i)=>{const key=['ds','dr','dl'][i],val=[ds,dr,dl][i];return`<div class="setting-size-item"><div class="setting-size-lbl">${lbl}</div><div class="setting-qty-ctrl"><button class="setting-qty-btn" onclick="sadj('${f}','${key}',-1)">−</button><input class="setting-qty-num" type="number" id="s-${f}-${key}" value="${val}" min="0"><button class="setting-qty-btn" onclick="sadj('${f}','${key}',1)">＋</button></div></div>`;}).join('')}</div>
+        </div>
+        <div class="setting-actions">
+          <button class="btn btn-success btn-sm" style="flex:1" onclick="saveTemplate('${f}')">${has?'更新する':'設定する'}</button>
+          ${has?`<button class="btn btn-ghost btn-sm" onclick="confirmReset('${f}')">削除</button>`:''}
+        </div>
+      </div>`;
+    }
   }).join('');
+}
+
+function calcMemberTotals(f, paused) {
+  const fMembers = getMembers()[f] || {};
+  const totals = { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0} };
+  Object.entries(fMembers).forEach(([id, m]) => {
+    if (paused[id]) return;
+    const ls = m.lunchSize || '';
+    const ds = m.dinnerSize || '';
+    if (ls && totals.lunch[ls]  !== undefined) totals.lunch[ls]++;
+    if (ds && totals.dinner[ds] !== undefined) totals.dinner[ds]++;
+  });
+  return totals;
+}
+
+function renderMemberSummary(totals) {
+  const lt = totals.lunch.s + totals.lunch.r + totals.lunch.l;
+  const dt = totals.dinner.s + totals.dinner.r + totals.dinner.l;
+  const lunchLine = lt > 0 ? `☀️ 昼食 <strong>${lt}食</strong>（半盛${totals.lunch.s} ／ 普通${totals.lunch.r} ／ 大盛${totals.lunch.l}）<br>` : '';
+  return `${lunchLine}🌙 夕食 <strong>${dt}食</strong>（半盛${totals.dinner.s} ／ 普通${totals.dinner.r} ／ 大盛${totals.dinner.l}）`;
+}
+
+function recalcTemplate(f) {
+  const fMembers = getMembers()[f] || {};
+  const paused = {};
+  Object.keys(fMembers).forEach(id => {
+    const cb = document.getElementById(`mp-${f}-${id}`);
+    if (cb && !cb.checked) paused[id] = true;
+  });
+  const totals = calcMemberTotals(f, paused);
+  const el = document.getElementById(`tmpl-summary-${f}`);
+  if (el) el.innerHTML = renderMemberSummary(totals);
+}
+
+function saveTemplateFromMembers(f) {
+  const fMembers = getMembers()[f] || {};
+  const paused = {};
+  Object.keys(fMembers).forEach(id => {
+    const cb = document.getElementById(`mp-${f}-${id}`);
+    if (cb && !cb.checked) paused[id] = true;
+  });
+  const totals = calcMemberTotals(f, paused);
+  const lt = totals.lunch.s + totals.lunch.r + totals.lunch.l;
+  const dt = totals.dinner.s + totals.dinner.r + totals.dinner.l;
+  if (lt + dt === 0) { toast('有効なメンバーが0人です','ng'); return; }
+  const days = getActiveDays(f);
+  if (days.length === 0) { toast('注文曜日を1日以上選択してください','ng'); return; }
+  const t = getTemplates();
+  t[f] = { lunch: totals.lunch, dinner: totals.dinner, days, membersPaused: paused };
+  saveTemplates(t);
+  renderSettings();
+  toast(`${f} の定期注文を保存しました ✓`, 'ok');
 }
 
 // 曜日チップのトグル（保存せず表示だけ更新）
@@ -3059,7 +3213,6 @@ function saveTemplate(f) {
   renderSettings();
   toast(`${f} の定期注文を保存しました ✓`,'ok');
 }
-
 function confirmReset(f) {
   pendingReset=f;
   document.getElementById('modal-reset-msg').textContent=`「${f}」のテンプレートを削除しますか？管理画面への自動反映がなくなります。`;
