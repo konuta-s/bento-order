@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -20,11 +20,24 @@
       --shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    input[type="date"], input[type="month"] { cursor: pointer; }
+    .po-m > summary::-webkit-details-marker { display: none; }
+    .po-m .po-m-arr::before { content: '▶'; }
+    .po-m[open] .po-m-arr::before { content: '▼'; }
+    #admin-tbl.hide-lunch .th-lunch, #admin-tbl.hide-lunch .th-size, #admin-tbl.hide-lunch .th-calc,
+    #admin-tbl.hide-lunch .td-l, #admin-tbl.hide-lunch .td-ls,
+    #admin-tbl.hide-dinner .th-dinner, #admin-tbl.hide-dinner .th-size-d, #admin-tbl.hide-dinner .th-calc-d,
+    #admin-tbl.hide-dinner .td-d, #admin-tbl.hide-dinner .td-ds { display: none !important; }
+    #admin-tbl.hide-lunch, #admin-tbl.hide-dinner { min-width: 0 !important; }
+    #admin-tbl .th-size, #admin-tbl .th-size-d, #admin-tbl .th-calc, #admin-tbl .th-calc-d { white-space: nowrap; min-width: 46px; }
     body { font-family: 'Segoe UI','Noto Sans JP',Arial,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
     /* ── NAV ── */
     nav { background: #1e3a5f; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-    .nav-inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; height: 56px; gap: 4px; }
+    .nav-inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; height: 56px; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+    .nav-inner::-webkit-scrollbar { display: none; }
+    .nav-btn { flex-shrink: 0; }
+    body { overflow-x: clip; }
     .nav-brand { font-weight: 800; font-size: 17px; color: #fff; margin-right: auto; white-space: nowrap; letter-spacing: -0.01em; }
     .nav-brand span { opacity: .7; font-weight: 400; font-size: 13px; margin-left: 6px; }
     .nav-btn { padding: 7px 13px; border-radius: 8px; border: none; background: transparent; color: rgba(255,255,255,0.65); cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; font-family: inherit; white-space: nowrap; }
@@ -474,6 +487,7 @@
     <div class="nav-brand">🍱 お弁当注文システム</div>
     <button class="nav-btn active"  onclick="showPage('order',   this)">注文フォーム</button>
     <button class="nav-btn"         onclick="showPage('setting', this)" style="line-height:1.4;">定期注文フォーム<br><span style="font-size:10px;font-weight:400;opacity:0.8;">（GHの注文はこちら）</span></button>
+    <button class="nav-btn"         onclick="showPage('personal', this)">個人注文</button>
     <button class="nav-btn"         onclick="showPage('menu',    this)">献立</button>
     <button class="nav-btn"         onclick="showPage('guide',   this)">取説</button>
     <button class="nav-btn"         onclick="requirePin(this)">管理画面</button>
@@ -492,7 +506,7 @@
           <select id="f-facility" onchange="onFacilityChange()">
             <option value="">-- 選択してください --</option>
           </select>
-          <div style="font-size:11px;color:#64748b;margin-top:5px;">グループホームなど定期メンバー管理の事業所は <span style="font-weight:600;color:#2563eb;cursor:pointer;" onclick="goToMaster()">管理画面 → マスタ</span> からどうぞ</div>
+          <div style="font-size:11px;color:#64748b;margin-top:5px;">グループホームの注文・お休みは <span style="font-weight:600;color:#2563eb;cursor:pointer;text-decoration:underline;" onclick="showPage('setting', [...document.querySelectorAll('.nav-btn')].find(b=>b.textContent.includes('定期注文')))">定期注文フォーム</span> からどうぞ</div>
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>注文日</label>
@@ -681,6 +695,9 @@
         <div class="legend-item"><span class="badge badge-orange">当日変更</span> この日のみ変更済み</div>
         <div class="legend-item"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--danger);vertical-align:middle;"></span> アレルギー記載あり（左枠）</div>
       </div>
+
+      <!-- 個人注文セクション -->
+      <div id="personal-orders-section"></div>
     </div>
     </div><!-- /admin-sub-admin -->
 
@@ -716,6 +733,7 @@
           <select id="m-view" style="width:auto;font-size:14px;padding:8px 10px;">
             <option value="">全体</option>
             <option value="__members__">メンバー別</option>
+            <option value="__personal__">個人注文</option>
           </select>
           <button class="btn btn-primary btn-sm" onclick="renderMonthly()">表示</button>
           <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">⬇ CSV出力</button>
@@ -758,6 +776,9 @@
       <h3 style="margin-bottom:8px;">価格設定（共通）</h3>
       <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">サイズ別単価を設定します。全事業所共通です。価格は注文フォームにも表示されます。</p>
       <div id="master-price-area"></div>
+      <div style="margin-top:4px;">
+        <button class="btn btn-primary" onclick="saveMaster()">💾 価格を保存する</button>
+      </div>
     </div>
 
     <!-- 容器設定（事業所別） -->
@@ -770,11 +791,39 @@
       </div>
     </div>
 
-    <!-- メンバー管理 -->
+    <!-- メンバー管理 + 個人注文 -->
     <div class="card">
-      <h3 style="margin-bottom:4px;">メンバー管理</h3>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">事業所ごとに利用者を登録します。管理画面で個人別の注文・キャンセルが確認できるようになります。</p>
-      <div id="master-member-area"></div>
+      <h3 style="margin-bottom:12px;">メンバー管理</h3>
+      <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;">
+        <button id="mmtab-gh" onclick="switchMasterTab('gh')" style="padding:8px 14px;border:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:700;cursor:pointer;background:var(--primary);color:white;">🏠 GHメンバー</button>
+        <button id="mmtab-personal" onclick="switchMasterTab('personal')" style="padding:8px 14px;border:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:700;cursor:pointer;background:#e2e8f0;color:var(--muted);">👤 個人注文</button>
+      </div>
+      <div id="mmtab-gh-content">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">事業所ごとに利用者を登録します。管理画面で個人別の注文・キャンセルが確認できるようになります。</p>
+        <div id="master-member-area"></div>
+      </div>
+      <div id="mmtab-personal-content" style="display:none;">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">職員・利用者の個人注文を登録します。曜日固定か月間指定で定期的に調理用画面に反映されます。</p>
+        <!-- 締め切り日設定 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:700;color:#166534;">📅 月間スケジュール締め切り</span>
+          <span style="font-size:13px;color:#166534;">毎月</span>
+          <input type="number" id="po-deadline-day" min="1" max="28" style="width:56px;padding:4px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;text-align:center;font-family:inherit;">
+          <span style="font-size:13px;color:#166534;">日まで（翌月分）</span>
+          <button onclick="savePersonalDeadlineSetting()" style="font-size:12px;padding:4px 12px;border:1.5px solid #86efac;border-radius:6px;background:white;color:#166534;font-weight:600;cursor:pointer;">保存</button>
+        </div>
+        <!-- Slack GAS URL設定 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;background:#faf5ff;border:1px solid #d8b4fe;border-radius:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:700;color:#6b21a8;">💬 Slack通知（GAS URL）</span>
+          <input type="text" id="po-gas-url" placeholder="https://script.google.com/macros/s/..." style="flex:1;min-width:200px;padding:4px 8px;border:1.5px solid #d8b4fe;border-radius:6px;font-size:12px;font-family:inherit;">
+          <button onclick="saveGasUrlSetting()" style="font-size:12px;padding:4px 12px;border:1.5px solid #d8b4fe;border-radius:6px;background:white;color:#6b21a8;font-weight:600;cursor:pointer;">保存</button>
+          <button onclick="notifyPendingToSlack()" style="font-size:12px;padding:4px 12px;border:1.5px solid #d8b4fe;border-radius:6px;background:#7c3aed;color:white;font-weight:600;cursor:pointer;">📣 未提出者を今すぐ通知</button>
+        </div>
+        <!-- 未提出一覧 -->
+        <div id="personal-pending-list" style="margin-bottom:16px;"></div>
+        <!-- 個人注文マスタ -->
+        <div id="master-personal-area"></div>
+      </div>
     </div>
 
     </div><!-- /admin-sub-master -->
@@ -787,23 +836,47 @@
       <div style="display:flex;flex-direction:column;gap:10px;">
 
         <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-          <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📋 今日の注文数を確認したい</summary>
+          <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📋 今日の注文数を確認したい（調理用）</summary>
           <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
-            「注文フォーム」タブを開き、事業所を選んで今日の日付を確認します。定期注文が入っている日は数が自動で入っています。
+            「管理画面」→「調理用」タブを開きます。日付は「‹ ›」か日付欄で切り替えます。
+            <ul style="padding-left:18px;margin:6px 0 0;">
+              <li>上段の大きな数字：昼・夕・総合計（個人注文も含む）</li>
+              <li>表：事業所ごとの半盛・普通・大盛。一番下の段が「👤 個人注文」</li>
+              <li>数字の下の「刻み×1」「魚×1」など：そのサイズの中の刻み・アレルギーの数</li>
+              <li>その日に昼（または夕）の注文がない時は、その列は表示されません</li>
+              <li>注文がない事業所は、表の下に「注文なし：○○」とまとめて表示</li>
+            </ul>
           </div>
         </details>
 
         <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-          <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📅 来週以降の注文予定を確認したい</summary>
+          <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📅 来週以降の注文予定・過去の履歴を見たい</summary>
           <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
-            「管理画面」→「注文履歴」タブを開きます。日付の範囲を指定すると、先の日程の定期注文予定も確認できます。
+            「管理画面」→「履歴」タブで確認できます。日付を指定しない場合は、過去60日〜2週間先までが表示されます。
+            <ul style="padding-left:18px;margin:6px 0 0;">
+              <li>「定期」マーク：定期注文から自動で入った日</li>
+              <li>GHは「休み：○○」として、一時停止・当日キャンセルの人の名前が出ます</li>
+              <li>個人注文の「追加」「キャンセル」も、昼・夕別に残ります</li>
+            </ul>
           </div>
         </details>
 
         <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-          <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🔍 過去の注文履歴を見たい</summary>
+          <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">👤 個人注文の人を登録したい</summary>
           <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
-            「管理画面」→「注文履歴」タブで確認できます。事業所ごと・日付ごとの注文数が一覧で表示されます。
+            <ol style="padding-left:18px;margin:0;">
+              <li>「管理画面」→「マスタ」→「👤 個人注文」を開く</li>
+              <li>一番上の「＋ 新しい個人注文を追加」に、名前・利用者／職員・通常／おかずのみ・曜日固定／月間指定・開始日・昼夕を入れる</li>
+              <li>「＋ 追加する」を押す</li>
+            </ol>
+            <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">登録した人は名前だけの一覧になります。名前を押すと、サイズ・開始日・昼夕・一時停止・削除が開きます。日ごとの注文は「個人注文」タブで本人（利用者は担当職員）が入力します。</div>
+          </div>
+        </details>
+
+        <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">💴 単価を変えたい</summary>
+          <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+            「管理画面」→「マスタ」→「価格設定」で、お弁当（昼・夕のサイズ別・タッパー・味噌汁）と個人注文（利用者・職員 × 半盛・普通・大盛・おかずのみ）を入力し、すぐ下の「💾 価格を保存する」を押します。
           </div>
         </details>
 
@@ -829,14 +902,20 @@
         <div style="display:flex;flex-direction:column;gap:10px;">
 
           <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📊 月ごとの合計数を集計したい</summary>
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📊 月の合計数・金額を見たい（月次出力）</summary>
             <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
               <ol style="padding-left:18px;margin:0;">
                 <li>「管理画面」→「履歴」タブを開く</li>
                 <li>上部の「📅 月次出力」タブを選ぶ</li>
-                <li>集計月を選んで「集計する」を押す</li>
+                <li>対象月と「表示」の種類を選んで「表示」を押す</li>
               </ol>
-              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">事業所ごとの昼食・夕食の合計（半盛・普通・大盛別）が一覧で表示されます。</div>
+              <ul style="padding-left:18px;margin:8px 0 0;">
+                <li><strong>全体</strong>：経理向けのまとめ。事業所合計・個人注文合計・総合計と、事業所ごと・個人ごとの「内容 × 数量 × 単価 ＝ 金額」</li>
+                <li><strong>事業所名</strong>：その事業所の金額と日別の数</li>
+                <li><strong>メンバー別</strong>：GHメンバーの日ごとの注文・休み</li>
+                <li><strong>個人注文</strong>：人ごとの金額の集計と、「明細」を開くと いつ・誰が・何を（1食1行）</li>
+              </ul>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">「CSV出力」で、表示中の内容をそのまま表計算ソフト用に出せます。数はキャンセル・一時停止を除いた実績です。</div>
             </div>
           </details>
 
@@ -886,7 +965,7 @@
             <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
               調理用シートや集計表では「<strong>半盛（S）/ 普通（R）/ 大盛（L）</strong>」の3区分で表示されます。<br>
               夕食は「×1」「×2」など食数込みで集計されます。<br>
-              <div style="margin-top:8px;background:#fef3c7;border-radius:7px;padding:8px 12px;font-size:12px;">⚠️ グループホームなどメンバー管理施設の数字は、テンプレートから自動計算されます。一時停止・退所が反映された数字が表示されます。</div>
+              <div style="margin-top:8px;background:#fef3c7;border-radius:7px;padding:8px 12px;font-size:12px;">⚠️ グループホームなどメンバー管理施設の数字は、メンバーのサイズ設定から毎日計算されます。一時停止・退所・当日キャンセル・サイズ変更が反映された数字です。直したいときは事業所の合計ではなく、メンバーごとに変更してください。</div>
             </div>
           </details>
 
@@ -896,6 +975,15 @@
     </div><!-- /admin-sub-manual -->
 
   </div><!-- /page-admin -->
+
+  <!-- ═══════ 個人注文 ═══════ -->
+  <div id="page-personal" class="page">
+    <div class="card" id="personal-schedule-card">
+      <h2 style="margin-bottom:4px;">👤 個人注文スケジュール</h2>
+      <div id="personal-schedule-deadline-banner"></div>
+      <div id="personal-schedule-form"></div>
+    </div>
+  </div>
 
   <!-- ═══════ 定期注文フォーム ═══════ -->
   <div id="page-setting" class="page">
@@ -919,6 +1007,35 @@
       <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border);padding-bottom:0;">
         <button id="gtab-order"   onclick="switchGuide('order')"   class="guide-tab active" style="padding:9px 16px;border:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:700;cursor:pointer;background:var(--primary);color:white;">📋 注文フォームの使い方</button>
         <button id="gtab-setting" onclick="switchGuide('setting')" class="guide-tab"        style="padding:9px 16px;border:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:700;cursor:pointer;background:#e2e8f0;color:var(--muted);">🔁 定期注文フォームの使い方</button>
+        <button id="gtab-personal" onclick="switchGuide('personal')" class="guide-tab"     style="padding:9px 16px;border:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:700;cursor:pointer;background:#e2e8f0;color:var(--muted);">👤 個人注文の使い方</button>
+      </div>
+
+      <!-- 個人注文 -->
+      <div id="guide-personal" style="display:none;">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7;">職員・利用者が自分の分のお弁当を頼むページです。登録は管理側（マスタ）で行い、日ごとの注文は<strong>本人が入力</strong>します（利用者は担当職員が入力）。</p>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">① 「個人注文」タブで自分の名前を押す</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">カレンダーが開きます。「今月／来月」で月を切り替えます。昼と夕を両方頼む人は、☀️ 昼食と 🌙 夕食のカレンダーが別々に出ます。</div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">② 頼む日を押して選び、「📨 この予定で提出する」</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">月間指定の人は、来月分を締め切り日（毎月25日など）までに提出してください。曜日固定の人は、登録した曜日が最初から青く入っているので提出は不要です。</div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">③ 提出したあとに変える時も、日付を押すだけ</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">
+            <span style="display:inline-block;width:11px;height:11px;background:#1d4ed8;border-radius:3px;vertical-align:-1px;"></span> 青：予定どおり頼む日<br>
+            <span style="display:inline-block;width:11px;height:11px;background:#16a34a;border-radius:3px;vertical-align:-1px;"></span> 緑「追加」：あとから追加した日<br>
+            <span style="display:inline-block;width:11px;height:11px;background:#fee2e2;border:1.5px solid #dc2626;border-radius:3px;vertical-align:-1px;"></span> 赤「キャンセル」：予定から取り消した日<br>
+            変更はそのまま調理用画面・履歴・月次の金額に反映されます。
+          </div>
+        </div>
+
+        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:10px;padding:14px 18px;">
+          <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:4px;">⏰ 当日の変更は朝9時まで</div>
+          <div style="font-size:13px;color:#78350f;">当日9時以降と過去の日は押せません。9時以降の変更はサヴァへお電話ください。</div>
+        </div>
       </div>
 
       <!-- 注文フォーム -->
@@ -940,20 +1057,30 @@
         </div>
 
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;">
-          <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px;">🏠 グループホーム・メンバー管理施設の変更は調理用画面から</div>
-          <div style="font-size:13px;color:#166534;line-height:1.7;">テンプレートで基本の注文が自動反映されます。当日の変更は「調理用」タブを開いて該当メンバーの「キャンセル」ボタンを押してください（9時以前のみ操作可）。</div>
+          <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px;">🏠 グループホームは「定期注文フォーム」から</div>
+          <div style="font-size:13px;color:#166534;line-height:1.7;">メンバーの分が毎日自動で注文されます。お休み・サイズ変更・入所・退所は「定期注文フォーム」で行います（使い方は上の「🔁 定期注文フォームの使い方」）。</div>
         </div>
       </div>
 
       <!-- 定期注文フォーム -->
       <div id="guide-setting" style="display:none;">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">定期注文の設定ページです。変更は<strong>「適用開始日」に指定した日付から反映</strong>されます。過去のデータには影響しません。</p>
+        <p style="font-size:14px;color:var(--text);margin-bottom:10px;line-height:1.8;">グループホームのお弁当は、<strong>メンバーを登録しておけば毎日自動で注文</strong>されます。毎日入力する必要はありません。<br>変える必要があるのは、<strong>お休み（外泊・入院など）・サイズ変更・入所・退所</strong>の時だけです。</p>
+
+        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:10px;padding:12px 16px;margin-bottom:18px;">
+          <div style="font-size:14px;font-weight:800;color:#92400e;">⏰ その日の変更は、当日の朝9時まで</div>
+          <div style="font-size:13px;color:#78350f;margin-top:2px;">9時を過ぎたら、その日の分はアプリでは変えられません。サヴァへお電話ください。</div>
+        </div>
 
         <!-- デモアニメ -->
-        <div style="max-width:300px;margin:0 auto 24px;position:relative;">
+        <div style="max-width:340px;margin:0 auto 24px;position:relative;">
           <div id="demo-setting"></div>
-          <div id="demo-setting-caption" style="text-align:center;font-size:12px;color:var(--muted);margin-top:10px;min-height:32px;line-height:1.5;"></div>
+          <div id="demo-setting-caption" style="text-align:center;font-size:14px;font-weight:700;color:var(--text);margin-top:12px;min-height:44px;line-height:1.6;"></div>
           <div id="demo-setting-dots" style="display:flex;justify-content:center;gap:5px;margin-top:8px;"></div>
+          <div style="display:flex;justify-content:center;gap:8px;margin-top:10px;">
+            <button onclick="demoStep('setting',-1)" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;background:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">◀ 戻る</button>
+            <button id="demo-setting-pause" onclick="demoTogglePause('setting',this)" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;background:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">⏸ 止める</button>
+            <button onclick="demoStep('setting',1)" style="padding:8px 14px;border:1.5px solid #2563eb;border-radius:8px;background:#2563eb;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">次へ ▶</button>
+          </div>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:10px;">
@@ -963,10 +1090,13 @@
             <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
               <ol style="padding-left:18px;margin:0;">
                 <li>「定期注文フォーム」を開く</li>
-                <li>該当メンバーの「変更▼」を押す</li>
-                <li>理由（外泊・外出・入院・その他）と日付を入力して「＋」を押す</li>
+                <li>お休みする人の「変更▼」を押す</li>
+                <li>「一時停止」で理由（外泊・外出・入院・その他）を選ぶ</li>
+                <li>お休みの最初の日と最後の日を入れる（1日だけなら最後の日は空欄でOK）</li>
+                <li>「登録」を押す → 名前に🏥マークが付きます</li>
               </ol>
-              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">停止期間中はその方の分が注文数から外れます。解除は一覧の「✕」から。</div>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">停止期間中はその方の分が注文数から外れます。解除は一覧の「✕」から（すでに過ぎた日の分は記録として残ります）。</div>
+              <div style="margin-top:6px;background:#fef3c7;border-radius:7px;padding:8px 12px;font-size:12px;">⏰ 当日9時以降・過去の日からは止められません。9時以降の変更はサヴァへお電話ください。</div>
             </div>
           </details>
 
@@ -976,8 +1106,9 @@
               <ol style="padding-left:18px;margin:0;">
                 <li>「定期注文フォーム」を開く</li>
                 <li>該当メンバーの「変更▼」を押す</li>
-                <li>昼食・夕食のサイズと食数を変更する（即時保存）</li>
+                <li>夕食のサイズ（半盛・普通・大盛）と個数を選ぶ（選んだ時点で保存されます）</li>
               </ol>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">明日の分から新しいサイズになります（朝9時前に変えた場合は今日の分から）。</div>
             </div>
           </details>
 
@@ -988,9 +1119,8 @@
                 <li>「定期注文フォーム」を開く</li>
                 <li>対象の事業所カード内「＋ 新しいメンバーを追加」を開く</li>
                 <li>名前・入所日・サイズ・食数を入力して「追加する」</li>
-                <li>「更新する」を押して保存</li>
               </ol>
-              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">入所日以降から自動で注文数に含まれます。</div>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">入所日から自動で注文数に入ります（「更新する」は押さなくて大丈夫です）。入所日は、当日9時以降なら明日以降の日にしてください。</div>
             </div>
           </details>
 
@@ -1002,7 +1132,7 @@
                 <li>該当メンバーの「変更▼」を押す</li>
                 <li>退所日を入力して「退所する」を押す</li>
               </ol>
-              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">退所日以降は注文数から外れます。再入所は「退所済み」欄の「再入所」から。</div>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">退所日から注文数に入らなくなります（退所日の分も作りません）。再入所は「退所済み」欄の「再入所」から。</div>
             </div>
           </details>
 
@@ -1024,7 +1154,7 @@
               <ol style="padding-left:18px;margin:0;">
                 <li>「定期注文フォーム」を開く</li>
                 <li>事業所カードの曜日チップをタップして選び直す</li>
-                <li>「適用開始日」を確認・変更する（デフォルトは今日）</li>
+                <li>「適用開始日」を確認・変更する（初期値は変更できる最初の日）</li>
                 <li>「更新する」を押して保存</li>
               </ol>
               <div style="margin-top:8px;background:#fef3c7;border-radius:7px;padding:8px 12px;font-size:12px;">⚠️ 曜日の変更は「更新する」を押すまで保存されません。</div>
@@ -1036,7 +1166,7 @@
             <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
               <p>定期注文フォームで曜日・数量・昼夕設定を変更するとき、<strong>「適用開始日」から新しい内容が反映</strong>されます。</p>
               <ul style="padding-left:18px;margin:8px 0;">
-                <li>デフォルトは今日の日付</li>
+                <li>初期値は変更できる最初の日（朝9時前なら今日、9時以降なら明日）。それより前の日は選べません</li>
                 <li>適用開始日より前のデータは変わりません</li>
                 <li>将来の日付を指定すればその日から切り替わります</li>
               </ul>
@@ -1061,7 +1191,7 @@
 
   // ── ガイドタブ切り替え ────────────────────────────────────
   function switchGuide(tab) {
-    ['order','setting'].forEach(t => {
+    ['order','setting','personal'].forEach(t => {
       document.getElementById('guide-'+t).style.display = t===tab ? 'block' : 'none';
       const btn = document.getElementById('gtab-'+t);
       btn.style.background = t===tab ? 'var(--primary)' : '#e2e8f0';
@@ -1110,7 +1240,7 @@
   // ── フォン UI ビルダー ────────────────────────────────────
   function buildPhone(step) {
     const nav = `<div style="background:#1e3a5f;padding:6px 8px;display:flex;gap:3px;overflow:hidden;">
-      ${(['注文フォーム','定期注文フォーム','管理画面']).map(t=>`<span style="font-size:9px;padding:3px 5px;border-radius:5px;color:${step.navActive===t?'white':'rgba(255,255,255,0.5)'};background:${step.navActive===t?'rgba(255,255,255,0.2)':'transparent'};font-weight:${step.navActive===t?'700':'400'};white-space:nowrap;">${t}</span>`).join('')}
+      ${(['注文フォーム','定期注文フォーム','個人注文','管理画面']).map(t=>`<span style="font-size:9px;padding:3px 5px;border-radius:5px;color:${step.navActive===t?'white':'rgba(255,255,255,0.5)'};background:${step.navActive===t?'rgba(255,255,255,0.2)':'transparent'};font-weight:${step.navActive===t?'700':'400'};white-space:nowrap;">${t}</span>`).join('')}
     </div>`;
     return `<div style="background:#f1f5f9;border-radius:14px;border:2px solid #334155;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.2);">
       <div style="background:#1e293b;height:16px;display:flex;align-items:center;justify-content:center;gap:4px;">
@@ -1213,126 +1343,140 @@
     { caption:'✅ 注文完了！お疲れさまでした🎉',                  navActive:'注文フォーム', body: mkOrderBody(2,false,true,true),   toast:'注文を受け付けました ✓' },
   ];
 
-  // ── 定期注文フォームデモ用UIビルダー ─────────────────────
-  function mkSettingMember(name, lSize, dSize, open, highlight, suspBadge) {
+  // ── 定期注文フォームデモ用UIビルダー（グループホーム向け） ──────────
+  const _ripple = (color) => `<span style="position:absolute;inset:-4px;border-radius:9px;border:2px solid ${color};animation:demoRipple 1.1s ease-out infinite;pointer-events:none;"></span>`;
+  const _tapWrap = (html, on, color='#2563eb') => on ? `<div style="position:relative;display:inline-block;">${html}${_ripple(color)}</div>` : html;
+  // m: {name, size, susp, open, tap, panel:'size'|'susp'|'exit', hl}
+  function mkGhMember(m) {
     const sLabel = {s:'半盛',r:'普通',l:'大盛'};
-    const lBadge = lSize ? `<span style="font-size:10px;color:#92400e;background:#fef3c7;padding:1px 5px;border-radius:4px;">☀️${sLabel[lSize]}</span>` : '';
-    const dBadge = dSize ? `<span style="font-size:10px;color:#6d28d9;background:#ede9fe;padding:1px 5px;border-radius:4px;">🌙${sLabel[dSize]}</span>` : '';
-    const sb = suspBadge ? `<span style="font-size:10px;color:#dc2626;background:#fee2e2;padding:1px 5px;border-radius:4px;">🏥入院</span>` : '';
-    const btn = highlight
-      ? `<div style="position:relative;display:inline-block;">
-           <button style="font-size:9px;padding:3px 8px;border-radius:5px;background:#8b5cf6;color:white;border:none;font-weight:700;">変更▼</button>
-           <span style="position:absolute;inset:-4px;border-radius:9px;border:2px solid #8b5cf6;animation:demoRipple 1.1s ease-out infinite;pointer-events:none;"></span>
-         </div>`
-      : `<button style="font-size:9px;padding:3px 8px;border-radius:5px;background:#8b5cf6;color:white;border:none;font-weight:700;">変更▼</button>`;
-    const panel = !open ? '' : `
-      <div style="margin-top:6px;background:#f8fafc;border-radius:7px;padding:7px 8px;font-size:10px;">
-        <div style="color:#64748b;margin-bottom:4px;">サイズ・食数</div>
-        <div style="display:flex;gap:4px;margin-bottom:4px;">
-          <div style="flex:1;">☀️昼食<br><select style="width:100%;font-size:10px;border-radius:4px;border:1px solid #e2e8f0;padding:2px;">${lSize==='l'?'<option selected>大盛</option>':'<option selected>普通</option>'}</select></div>
-          <div style="flex:1;">🌙夕食<br><select style="width:100%;font-size:10px;border-radius:4px;border:1px solid #e2e8f0;padding:2px;"><option selected>普通</option></select></div>
+    const sb = m.susp ? `<span style="font-size:9px;color:#dc2626;background:#fee2e2;padding:1px 4px;border-radius:4px;margin-left:3px;">🏥${m.susp}</span>` : '';
+    const btn = _tapWrap(`<button style="font-size:9px;padding:3px 7px;border-radius:5px;background:white;color:#475569;border:1px solid #cbd5e1;font-weight:700;">変更▼</button>`, m.tap);
+    let panel = '';
+    if (m.open) {
+      const hl = (k) => m.hl === k ? 'outline:2px solid #2563eb;outline-offset:1px;' : '';
+      panel = `<div style="margin-top:5px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:6px 7px;font-size:9.5px;color:#475569;">
+        <div style="font-weight:700;margin-bottom:3px;">サイズ・食数</div>
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:5px;">🌙夕食
+          <span style="border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;background:white;${hl('size')}">${sLabel[m.newSize||m.size]} ▾</span>
+          <span style="border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;background:white;">×1 ▾</span>
         </div>
-        <div style="color:#64748b;margin-bottom:4px;margin-top:6px;">一時停止</div>
-        <div style="display:flex;gap:3px;align-items:center;">
-          <select style="font-size:10px;border-radius:4px;border:1px solid #e2e8f0;padding:2px;flex:1;"><option>外泊</option><option>外出</option><option selected>入院</option><option>その他</option></select>
-          <input type="text" value="11/10" style="width:36px;font-size:10px;border-radius:4px;border:1px solid #e2e8f0;padding:2px;text-align:center;">
-          <span style="font-size:9px;color:#94a3b8;">〜</span>
-          <input type="text" value="12/05" style="width:36px;font-size:10px;border-radius:4px;border:1px solid #e2e8f0;padding:2px;text-align:center;">
+        <div style="font-weight:700;margin-bottom:3px;">一時停止（お休み）</div>
+        <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">
+          <span style="border:1px solid #cbd5e1;border-radius:4px;padding:1px 5px;background:white;${hl('reason')}">${m.reason||'外泊'} ▾</span>
+          <span style="border:1px solid #cbd5e1;border-radius:4px;padding:1px 5px;background:white;${hl('date')}">${m.from||'年/月/日'}</span>〜
+          <span style="border:1px solid #cbd5e1;border-radius:4px;padding:1px 5px;background:white;${hl('date')}">${m.to||'年/月/日'}</span>
+          ${_tapWrap(`<button style="font-size:9px;padding:2px 7px;border-radius:4px;background:white;border:1px solid #cbd5e1;font-weight:700;">登録</button>`, m.hl==='reg')}
         </div>
-        <button style="margin-top:5px;width:100%;padding:4px;background:#dc2626;color:white;border:none;border-radius:5px;font-size:10px;font-weight:700;">登録する</button>
+        <div style="font-weight:700;margin:6px 0 3px;color:#dc2626;">退所日</div>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <span style="border:1px solid #fca5a5;border-radius:4px;padding:1px 5px;background:white;">${m.exit||'11/30'}</span>
+          ${_tapWrap(`<button style="font-size:9px;padding:2px 7px;border-radius:4px;background:white;border:1px solid #fca5a5;color:#dc2626;font-weight:700;">退所する</button>`, m.hl==='exit', '#dc2626')}
+        </div>
       </div>`;
-    return `<div style="padding:5px 0;border-bottom:1px solid #e2e8f0;">
-      <div style="display:flex;align-items:center;gap:5px;">
-        <span style="font-size:11px;font-weight:700;flex:1;color:#1e293b;">${name}${sb}</span>
-        ${lBadge}${dBadge}
+    }
+    return `<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="font-size:10.5px;font-weight:700;flex:1;color:${m.susp?'#94a3b8':'#1e293b'};">${m.name}${sb}</span>
+        <span style="font-size:9.5px;color:#6d28d9;">🌙${sLabel[m.newSize||m.size]}</span>
         ${btn}
       </div>
       ${panel}
     </div>`;
   }
-
-  function mkSettingCard(facilityName, days, members, showSave, saved) {
-    const allDays = ['月','火','水','木','金'];
-    const dayChips = allDays.map(d=>
-      `<span style="font-size:9px;padding:3px 6px;border-radius:12px;font-weight:700;background:${days.includes(d)?'#8b5cf6':'#e2e8f0'};color:${days.includes(d)?'white':'#94a3b8'};">${d}</span>`
-    ).join('');
-    const saveBtn = !showSave ? '' : saved
-      ? `<button style="width:100%;padding:6px;background:#16a34a;color:white;border:none;border-radius:6px;font-size:10px;font-weight:700;margin-top:6px;">保存しました ✓</button>`
-      : `<div style="position:relative;margin-top:6px;">
-           <button style="width:100%;padding:6px;background:#8b5cf6;color:white;border:none;border-radius:6px;font-size:10px;font-weight:700;">更新する</button>
-           <span style="position:absolute;inset:-4px;border-radius:10px;border:2px solid #8b5cf6;animation:demoRipple 1.1s ease-out infinite;pointer-events:none;"></span>
-         </div>`;
-    return `<div style="background:white;border-radius:8px;padding:7px 8px;">
-      <div style="font-size:10px;font-weight:800;color:#1e293b;margin-bottom:5px;">${facilityName}</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;">${dayChips}</div>
-      ${members}
-      ${saveBtn}
+  // c: {members:[...], total:{s,r,l}, days, tapDay, addOpen, tapAdd, tapUpdate, saved, lock}
+  function mkGhCard(c) {
+    const dayAll = ['日','月','火','水','木','金','土'];
+    const days = c.days || ['月','火','水','木','金','土','日'];
+    const chips = dayAll.map(d => {
+      const on = days.includes(d);
+      const chip = `<span style="display:inline-block;font-size:9px;width:17px;text-align:center;padding:2px 0;border-radius:50%;font-weight:700;background:${on?'#2563eb':'white'};color:${on?'white':'#94a3b8'};border:1px solid ${on?'#2563eb':'#e2e8f0'};">${d}</span>`;
+      return c.tapDay === d ? _tapWrap(chip, true) : chip;
+    }).join('');
+    const t = c.total || {s:2,r:2,l:0};
+    const add = c.addOpen
+      ? `<div style="margin-top:5px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:6px 7px;font-size:9.5px;color:#166534;">
+          <div style="font-weight:700;margin-bottom:3px;">＋ 新しいメンバーを追加</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;">
+            <span style="border:1px solid #bbf7d0;border-radius:4px;padding:1px 5px;background:white;">山田さん</span>
+            <span style="border:1px solid #bbf7d0;border-radius:4px;padding:1px 5px;background:white;">入所日 12/1</span>
+            <span style="border:1px solid #bbf7d0;border-radius:4px;padding:1px 5px;background:white;">🌙普通 ▾</span>
+            ${_tapWrap(`<button style="font-size:9px;padding:2px 7px;border-radius:4px;background:#16a34a;color:white;border:none;font-weight:700;">追加する</button>`, c.tapAdd, '#16a34a')}
+          </div>
+        </div>`
+      : `<div style="font-size:9.5px;color:#2563eb;margin-top:5px;">${_tapWrap('<span style="font-weight:700;">▶ ＋ 新しいメンバーを追加</span>', c.tapAddOpen)}</div>`;
+    const update = c.showUpdate
+      ? `<div style="margin-top:6px;">${_tapWrap(`<button style="width:100%;padding:5px;background:${c.saved?'#16a34a':'#2563eb'};color:white;border:none;border-radius:6px;font-size:10px;font-weight:700;">${c.saved?'保存しました ✓':'更新する'}</button>`, c.tapUpdate && !c.saved)}</div>` : '';
+    const lock = c.lock ? `<div style="position:absolute;left:8px;right:8px;bottom:8px;background:#1e293b;color:white;font-size:9.5px;font-weight:700;padding:6px 8px;border-radius:8px;line-height:1.4;">🔒 当日9:00以降・過去の日は変更できません。当日の変更はお電話でご連絡ください。</div>` : '';
+    return `<div style="background:white;border-radius:8px;padding:7px 8px;position:relative;">
+      <div style="display:flex;align-items:center;margin-bottom:4px;"><span style="font-size:11px;font-weight:800;color:#1e293b;flex:1;">カマラド（GH）</span><span style="font-size:8.5px;color:#16a34a;background:#dcfce7;padding:1px 5px;border-radius:8px;">✓ 設定済み</span></div>
+      <div style="font-size:9px;color:#64748b;margin-bottom:2px;">注文曜日</div>
+      <div style="display:flex;gap:2px;margin-bottom:5px;">${chips}</div>
+      <div style="background:#f8fafc;border-radius:5px;padding:3px 6px;font-size:9.5px;margin-bottom:4px;">🌙 夕食 <b>${t.s+t.r+t.l}食</b>（半盛${t.s}／普通${t.r}／大盛${t.l}）</div>
+      <div style="font-size:9px;color:#64748b;">メンバー一覧</div>
+      ${c.members.map(mkGhMember).join('')}
+      ${add}
+      ${update}
+      ${lock}
     </div>`;
   }
+  const _ghBase = () => [
+    { name:'佐藤', size:'s' }, { name:'田中', size:'s' }, { name:'鈴木', size:'r' }, { name:'高橋', size:'r' }
+  ];
+  const _ghWith = (idx, patch) => _ghBase().map((m,i) => i===idx ? { ...m, ...patch } : m);
 
   const settingSteps = [
-    {
-      caption: '① 「定期注文フォーム」を開くと事業所ごとのメンバー一覧が見えます',
-      navActive: '定期注文フォーム',
-      body: mkSettingCard('ボヤージュ', ['月','火','水','木','金'],
-        mkSettingMember('佐藤さん','r','r',false,false,false) +
-        mkSettingMember('田中さん','r','l',false,false,false) +
-        mkSettingMember('鈴木さん','l','r',false,false,false),
-        false, false)
-    },
-    {
-      caption: '② サイズを変えたいメンバーの「変更▼」をタップ',
-      navActive: '定期注文フォーム',
-      body: mkSettingCard('ボヤージュ', ['月','火','水','木','金'],
-        mkSettingMember('佐藤さん','r','r',false,false,false) +
-        mkSettingMember('田中さん','r','l',false,true,false) +
-        mkSettingMember('鈴木さん','l','r',false,false,false),
-        false, false)
-    },
-    {
-      caption: '③ パネルが開きます。昼食・夕食のサイズを選ぶと即座に保存されます',
-      navActive: '定期注文フォーム',
-      body: mkSettingCard('ボヤージュ', ['月','火','水','木','金'],
-        mkSettingMember('佐藤さん','r','r',false,false,false) +
-        mkSettingMember('田中さん','r','l',true,false,false) +
-        mkSettingMember('鈴木さん','l','r',false,false,false),
-        false, false)
-    },
-    {
-      caption: '④ 一時停止は理由・期間を選んで「登録する」。入院・外泊などに使えます',
-      navActive: '定期注文フォーム',
-      body: mkSettingCard('ボヤージュ', ['月','火','水','木','金'],
-        mkSettingMember('佐藤さん','r','r',false,false,false) +
-        mkSettingMember('田中さん','r','l',true,false,false) +
-        mkSettingMember('鈴木さん','l','r',false,false,false),
-        false, false)
-    },
-    {
-      caption: '⑤ 曜日チップをタップして注文日を変更できます',
-      navActive: '定期注文フォーム',
-      body: mkSettingCard('ボヤージュ', ['月','火','水','木'],
-        mkSettingMember('佐藤さん','r','r',false,false,false) +
-        mkSettingMember('田中さん','r','l',false,false,false) +
-        mkSettingMember('鈴木さん','l','r',false,false,false),
-        true, false)
-    },
-    {
-      caption: '✅ 「更新する」を押すと曜日変更が保存されます',
-      navActive: '定期注文フォーム',
-      body: mkSettingCard('ボヤージュ', ['月','火','水','木'],
-        mkSettingMember('佐藤さん','r','r',false,false,false) +
-        mkSettingMember('田中さん','r','l',false,false,false) +
-        mkSettingMember('鈴木さん','l','r',false,false,false),
-        true, true)
-    },
+    { caption:'① 「定期注文フォーム」を開くと、ホームのメンバー一覧が出ます。毎日この人数で自動的に注文されます',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghBase() }) },
+    // お休み（外泊・入院など）
+    { caption:'【お休みの入れ方】② お休みする人の「変更▼」を押します',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(1,{ tap:true }) }) },
+    { caption:'③ 「一時停止」で理由（外泊・入院など）を選びます',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(1,{ open:true, hl:'reason', reason:'外泊' }) }) },
+    { caption:'④ お休みの最初の日と最後の日を入れます（1日だけなら最後の日は空欄でOK）',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(1,{ open:true, hl:'date', reason:'外泊', from:'11/20', to:'11/22' }) }) },
+    { caption:'⑤ 「登録」を押します',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(1,{ open:true, hl:'reg', reason:'外泊', from:'11/20', to:'11/22' }) }) },
+    { caption:'✅ 名前に🏥マークが付き、その日は自動で数から外れます（半盛2→1）',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(1,{ susp:'外泊' }), total:{s:1,r:2,l:0} }) },
+    // サイズ変更
+    { caption:'【サイズの変え方】⑥ 「変更▼」→ 夕食のサイズを選ぶだけで保存されます',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(2,{ open:true, hl:'size', newSize:'l' }) }) },
+    { caption:'✅ 明日の分から新しいサイズになります（朝9時前なら今日の分から）',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(2,{ newSize:'l' }), total:{s:2,r:1,l:1} }) },
+    // 9時ロック
+    { caption:'⚠️ 当日の朝9時を過ぎると、その日の分は変えられません。サヴァへお電話ください',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghBase(), lock:true }) },
+    // 入所・退所
+    { caption:'【新しく入所した人】⑦ 「＋ 新しいメンバーを追加」を押します',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghBase(), tapAddOpen:true }) },
+    { caption:'⑧ 名前・入所日・夕食のサイズを入れて「追加する」。入所日から自動で数に入ります',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghBase(), addOpen:true, tapAdd:true }) },
+    { caption:'【退所する人】⑨ 「変更▼」→ 退所日を入れて「退所する」。退所日から数に入らなくなります',
+      navActive:'定期注文フォーム', body: mkGhCard({ members:_ghWith(3,{ open:true, hl:'exit' }) }) },
   ];
+
+  // デモの操作（戻る・止める・次へ）
+  function demoPrev(id) {
+    const steps = _demoSteps[id];
+    _demoCurr[id] = (_demoCurr[id] - 1 + steps.length) % steps.length;
+    demoRender(id);
+  }
+  function demoTogglePause(id, btn) {
+    if (_demoTimers[id]) { clearInterval(_demoTimers[id]); _demoTimers[id] = null; if (btn) btn.textContent = '▶ 再生'; }
+    else { _demoTimers[id] = setInterval(() => demoNext(id), 4500); if (btn) btn.textContent = '⏸ 止める'; }
+  }
+  function demoStep(id, dir) {
+    clearInterval(_demoTimers[id]); _demoTimers[id] = null;
+    const b = document.getElementById('demo-'+id+'-pause'); if (b) b.textContent = '▶ 再生';
+    dir < 0 ? demoPrev(id) : demoNext(id);
+  }
 
   // ── 起動 ─────────────────────────────────────────────────
   setTimeout(() => {
     demoStart('spot',   spotSteps,   2600);
     demoStart('repeat', repeatSteps, 2600);
     demoStart('first',  firstSteps,  2600);
-    demoStart('setting', settingSteps, 2800);
+    demoStart('setting', settingSteps, 4500);
   }, 400);
   </script>
 
@@ -1513,8 +1657,8 @@ function refreshSelects() {
   });
   const mView = document.getElementById('m-view');
   const curM = mView.value;
-  // option[0]=全体, option[1]=メンバー別 は固定。2以降をFACILITIESで差し替え
-  while (mView.options.length > 2) mView.remove(2);
+  // option[0]=全体, [1]=メンバー別, [2]=個人注文 は固定。3以降をFACILITIESで差し替え
+  while (mView.options.length > 3) mView.remove(3);
   FACILITIES.forEach(f => { const o=document.createElement('option'); o.value=f; o.textContent=f; mView.appendChild(o); });
   mView.value = curM;
 }
@@ -1555,6 +1699,27 @@ const savePrices  = d => { DB.prices = d; dbRef('settings/prices').set(d); };
 const getPrice = (meal, size) => { const p=getPrices()[meal]; return p?.[size] ?? null; };
 const getMembers  = () => DB.members;
 const saveMembers = d => { DB.members = d; dbRef('settings/members').set(d); };
+const getPersonalOrders   = () => DB.personal_orders  || {};
+// 1人分だけ保存（他の人の登録を上書きしない）。d[id] が無ければその人を削除
+const savePersonalOrders  = (d, id) => {
+  DB.personal_orders = d;
+  const ref = dbRef(`settings/personal_orders/${id}`);
+  if (d[id]) ref.set(d[id]); else ref.remove();
+};
+const getPersonalDeadline = () => DB.personal_deadline|| { day: 25 };
+const savePersonalDeadline= d => { DB.personal_deadline = d; dbRef('settings/personal_deadline').set(d); };
+const getGasUrl  = () => DB.gas_url || '';
+const saveGasUrl = url => { DB.gas_url = url; dbRef('settings/gas_url').set(url); };
+const getPersonalSchedules= () => DB.personal_schedules || {};
+const logPersonalOrderChange = (name, date, action, meal) => {
+  const entry = { name, date, action, changedAt: new Date().toISOString(), ...(meal ? { meal } : {}) };
+  dbRef('personal_order_log').push(entry);
+};
+const savePersonalSchedule= (id, ym, data) => {
+  if (!DB.personal_schedules) DB.personal_schedules = {};
+  if (data === null) { delete DB.personal_schedules[id]?.[ym]; dbRef(`personal_schedules/${id}/${ym}`).remove(); }
+  else { if (!DB.personal_schedules[id]) DB.personal_schedules[id] = {}; DB.personal_schedules[id][ym] = data; dbRef(`personal_schedules/${id}/${ym}`).set(data); }
+};
 
 // ── Utils ─────────────────────────────────────────────────
 const toDateStr = d => {
@@ -1594,14 +1759,21 @@ function initFirebase() {
   dbRef('settings').on('value', snap => {
     const wasReady = dbReady;
     const s = snap.val() || {};
-    DB.pin        = s.pin        || '1234';
-    DB.containers = s.containers || {};
-    DB.facilities = s.facilities || null;
-    DB.prices     = s.prices     || {};
-    DB.members    = s.members    || {};
+    DB.pin             = s.pin             || '1234';
+    DB.containers      = s.containers      || {};
+    DB.facilities      = s.facilities      || null;
+    DB.prices          = s.prices          || {};
+    DB.members         = s.members         || {};
+    DB.personal_orders  = s.personal_orders  || {};
+    DB.personal_deadline= s.personal_deadline|| { day: 25 };
+    DB.gas_url          = s.gas_url          || '';
     loaded.settings = true;
     tryReady();
-    if (wasReady) { loadFacilities(); refreshSelects(); renderMemberMaster(); }
+    if (wasReady) {
+      loadFacilities(); refreshSelects(); renderMemberMaster(); renderPersonalScheduleForm();
+      renderAdmin(); renderHistory();
+      if (document.getElementById('monthly-out')?.innerHTML) renderMonthly();
+    }
   });
 
   dbRef('templates').on('value', snap => {
@@ -1609,7 +1781,24 @@ function initFirebase() {
     DB.templates = snap.val() || {};
     loaded.templates = true;
     tryReady();
-    if (wasReady) renderSettings();
+    if (wasReady) {
+      renderSettings(); renderAdmin(); renderHistory();
+      // 月次出力が表示中なら再描画
+      if (document.getElementById('monthly-out')?.innerHTML) renderMonthly();
+    }
+  });
+
+  // 個人注文月間スケジュール（リアルタイム同期）
+  dbRef('personal_schedules').on('value', snap => {
+    DB.personal_schedules = snap.val() || {};
+    if (dbReady) { renderPersonalSection(toDateStr(adminDay)); renderPersonalScheduleForm(); renderPersonalPendingList(); }
+  });
+
+  // 個人注文変更ログ
+  dbRef('personal_order_log').on('value', snap => {
+    const val = snap.val() || {};
+    DB.personal_order_log = Object.values(val).sort((a,b) => b.changedAt.localeCompare(a.changedAt));
+    if (dbReady) renderHistory();
   });
 }
 
@@ -1628,10 +1817,18 @@ function init() {
   const ym = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   document.getElementById('m-month').value = ym;
   document.getElementById('s-month').value = ym;
-  calcTotals(); renderAdmin(); renderHistory(); renderSettings(); renderMemberMaster();
+  calcTotals(); renderAdmin(); renderHistory(); renderSettings(); renderMemberMaster(); renderPersonalScheduleForm();
 }
 
 // ── Page Nav ──────────────────────────────────────────────
+// 日付・月の入力欄は、枠のどこを押してもカレンダーを開く
+document.addEventListener('click', e => {
+  const el = e.target;
+  if (el instanceof HTMLInputElement && (el.type === 'date' || el.type === 'month') && !el.disabled && !el.readOnly) {
+    try { el.showPicker(); } catch (_) {}
+  }
+});
+
 function showPage(page, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -1795,7 +1992,7 @@ function renderMaster() {
           </div>
         </div>
       </div>
-      <div style="padding:10px 14px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;gap:8px;">
+      <div style="padding:10px 14px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="font-size:13px;font-weight:700;">🍜 味噌汁 加算額</span>
         <div style="display:flex;align-items:center;gap:2px;">
           <span style="font-size:12px;color:var(--muted);">¥</span>
@@ -1803,6 +2000,23 @@ function renderMaster() {
             style="width:70px;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;text-align:right;font-family:inherit;">
         </div>
         <span style="font-size:12px;color:var(--muted);">容器設定で「弁当（味噌汁付き）」を選択した事業所に加算されます</span>
+      </div>
+    </div>
+    <div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;">
+      <div style="background:#1e40af;color:white;padding:8px 14px;font-weight:700;font-size:15px;">👤 個人注文価格（共通）</div>
+      <div style="padding:14px;overflow-x:auto;">
+        <table style="border-collapse:collapse;font-size:13px;">
+          <thead><tr>
+            <th style="padding:4px 8px;"></th>
+            ${PO_PRICE_COLS.map(([,l])=>`<th style="padding:4px 8px;font-size:12px;color:var(--muted);font-weight:700;">${l}</th>`).join('')}
+          </tr></thead>
+          <tbody>${[['user','利用者'],['staff','職員']].map(([c,cl])=>`<tr>
+            <td style="padding:4px 8px;font-weight:600;white-space:nowrap;">${cl}</td>
+            ${PO_PRICE_COLS.map(([suf])=>`<td style="padding:4px 6px;white-space:nowrap;"><span style="font-size:12px;color:var(--muted);">¥</span>
+              <input type="number" min="0" id="po-price-${c}_${suf}" value="${poPriceStored(p.personal||{}, c, suf)}"
+                style="width:72px;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;text-align:right;font-family:inherit;"></td>`).join('')}
+          </tr>`).join('')}</tbody>
+        </table>
       </div>
     </div>`;
 
@@ -1860,6 +2074,12 @@ function saveMaster() {
   // 味噌汁加算額（共通）
   const misoInp = document.getElementById('master-miso-price');
   if (misoInp) prices.misoPrice = parseInt(misoInp.value)||0;
+  // 個人注文価格
+  prices.personal = {};
+  ['user','staff'].forEach(c => PO_PRICE_COLS.forEach(([suf]) => {
+    const inp = document.getElementById(`po-price-${c}_${suf}`);
+    prices.personal[`${c}_${suf}`] = parseInt(inp?.value)||0;
+  }));
   savePrices(prices);
 
   toast('マスタ設定を保存しました ✓','ok');
@@ -2444,24 +2664,8 @@ function renderAdmin() {
   // テンプレート vs 当日注文のマージ
   const merged={};
   FACILITIES.forEach(f => {
-    if (dayData[f] && (dayData[f].lunch || dayData[f].dinner)) {
-      const tmpl=tmpls[f];
-      const isOverride = tmpl && REPEAT_SET.has(f) && (
-        JSON.stringify({l:dayData[f].lunch,d:dayData[f].dinner}) !==
-        JSON.stringify({l:tmpl.lunch,d:tmpl.dinner})
-      );
-      merged[f]={...dayData[f], _type: REPEAT_SET.has(f) ? (isOverride?'override':'manual') : 'manual'};
-    } else if (REPEAT_SET.has(f) && tmpls[f]) {
-      const days=tmpls[f].days||[0,1,2,3,4,5,6];
-      const isFacSusp=(tmpls[f].suspensions||[]).some(s=>date>=s.from&&date<=s.to);
-      if (days.includes(dow)&&!isFacSusp) {
-        const memberOvs=dayData[f]?.members||{};
-        const paused=Object.fromEntries(Object.entries(memberOvs).filter(([,v])=>v.cancelled).map(([id])=>[id,true]));
-        const mt=calcMemberTotals(f,paused,date);
-        const noDays=!tmpls[f].days;
-        merged[f]={...tmpls[f], lunch:mt.lunch, dinner:mt.dinner, allergy:'', _type:'tmpl', _noDays:noDays};
-      }
-    }
+    const fd = getFacilityDay(f, date);
+    if (fd) merged[f] = fd;
   });
 
   // 集計（弁当・タッパー別、イレギュラー考慮）
@@ -2485,8 +2689,18 @@ function renderAdmin() {
       dtT+=o.dinner?.t||0;
     }
   });
+  // 個人注文（事業所と同じ形で集計し、合計にも含める）
+  const poToday = getPersonalOrdersForDate(date);
+  const po = { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0}, sidesL:0, sidesD:0 };
+  poToday.forEach(p => {
+    if (p.serves_lunch)  { if (p.mealType==='sides') po.sidesL++; else po.lunch[p.lunchSize||'r']++; }
+    if (p.serves_dinner) { if (p.mealType==='sides') po.sidesD++; else po.dinner[p.dinnerSize||'r']++; }
+  });
+  lbS+=po.lunch.s; lbR+=po.lunch.r; lbL+=po.lunch.l;
+  dbS+=po.dinner.s; dbR+=po.dinner.r; dbL+=po.dinner.l;
+  const lSides = po.sidesL, dSides = po.sidesD;
   const lbTotal=lbS+lbR+lbL, dbTotal=dbS+dbR+dbL;
-  const tL=lbTotal+ltT, tD=dbTotal+dtT;
+  const tL=lbTotal+ltT+lSides, tD=dbTotal+dtT+dSides;
   // フッター用の全体集計（弁当のみ）
   const lS=lbS, lR=lbR, lL=lbL, dS=dbS, dR=dbR, dL=dbL;
 
@@ -2550,6 +2764,11 @@ function renderAdmin() {
       <div class="s-label">🥡 昼 タッパー</div>
       <div class="s-value">${ltT}<span>個</span></div>
     </div>`);
+  if (lSides > 0) lunchDetailCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#ca8a04,#fde68a);color:#1c1917;">
+      <div class="s-label">🥗 昼 おかずのみ</div>
+      <div class="s-value">${lSides}<span>個</span></div>
+    </div>`);
 
   const dinnerDetailCards = [];
   if (dbTotal > 0) dinnerDetailCards.push(`
@@ -2562,6 +2781,11 @@ function renderAdmin() {
     <div class="summary-box" style="background:linear-gradient(135deg,#5b21b6,#c4b5fd);color:#1c1917;">
       <div class="s-label">🥡 夕 タッパー</div>
       <div class="s-value">${dtT}<span>個</span></div>
+    </div>`);
+  if (dSides > 0) dinnerDetailCards.push(`
+    <div class="summary-box" style="background:linear-gradient(135deg,#6d28d9,#ddd6fe);color:#1c1917;">
+      <div class="s-label">🥗 夕 おかずのみ</div>
+      <div class="s-value">${dSides}<span>個</span></div>
     </div>`);
 
   const lunchDetailHtml  = lunchDetailCards.length
@@ -2600,11 +2824,13 @@ function renderAdmin() {
   const allergyBlocks = FACILITIES.map(f => {
     const o = merged[f]; if (!o) return '';
     const si = o.specialItems || {};
+    const memberAllergies = o._memberAllergies || [];
     const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
     const hasAllergy = aList.length > 0;
     const hasKizami  = si.kizami?.enabled;
     const hasOther   = si.other?.enabled;
-    if (!hasAllergy && !hasKizami && !hasOther) return '';
+    const hasMemberAllergy = memberAllergies.length > 0;
+    if (!hasAllergy && !hasKizami && !hasOther && !hasMemberAllergy) return '';
 
     let lines = '';
     aList.forEach(a => {
@@ -2632,11 +2858,25 @@ function renderAdmin() {
     }
     if (hasOther) {
       const det = si.other.detail ? esc(si.other.detail) : '';
+      // メモに出てくる人が、一時停止・当日キャンセルで既に数から外れている場合の注意
+      const raw = (si.other.detail || '').replace(/\s/g, '');
+      const dup = getMembersOffForDate(f, date).filter(n => {
+        const full = n.replace(/\s/g, ''), sur = n.split(/\s/)[0];
+        return raw.includes(full) || (sur.length >= 2 && raw.includes(sur));
+      });
+      const dupNote = dup.length ? `<div style="font-size:12px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:4px;padding:3px 8px;margin-top:4px;">※ ${dup.map(esc).join('、')} は休み（一時停止・キャンセル）で、すでに数から除外済みです</div>` : '';
       lines += `<div style="display:flex;gap:6px;align-items:flex-start;">
         <span style="background:#16a34a;color:white;font-size:12px;font-weight:800;border-radius:4px;padding:2px 8px;white-space:nowrap;">その他</span>
-        <span style="font-size:14px;font-weight:700;color:#166534;">${det}</span>
+        <div><span style="font-size:14px;font-weight:700;color:#166534;">${det}</span>${dupNote}</div>
       </div>`;
     }
+    // メンバーマスタのアレルギー
+    memberAllergies.forEach(a => {
+      lines += `<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;">
+        <span style="background:#dc2626;color:white;font-size:12px;font-weight:800;border-radius:4px;padding:2px 8px;white-space:nowrap;">アレルギー</span>
+        <span style="font-size:14px;font-weight:700;color:#991b1b;">${esc(a.name)}：${esc(a.detail)}</span>
+      </div>`;
+    });
     return `<div style="margin-bottom:10px;padding:10px 12px;background:white;border:1px solid #fca5a5;border-radius:8px;">
       <div style="font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:6px;">${esc(f)}</div>
       ${lines}
@@ -2654,21 +2894,26 @@ function renderAdmin() {
   if (allergyEl) allergyEl.innerHTML = allergySection;
 
   // C. 出荷一覧テーブル
+  const noOrderFacs = FACILITIES.filter(f => !merged[f]);
   const rows=FACILITIES.map(f => {
     const o=merged[f];
-    if (!o) return `<tr style="opacity:0.45;">
-      <td class="td-name" style="color:var(--muted);">${esc(f)}</td>
-      <td colspan="9" class="no-order" style="color:var(--muted);font-style:italic;">注文なし</td>
-    </tr>`;
+    if (!o) return '';
 
     const ls=o.lunch?.s||0,lr=o.lunch?.r||0,ll=o.lunch?.l||0,ltap=o.lunch?.t||0,lt=ls+lr+ll+ltap;
     const ds=o.dinner?.s||0,dr=o.dinner?.r||0,dl=o.dinner?.l||0,dtap=o.dinner?.t||0,dt=ds+dr+dl+dtap;
+    const mk0 = o._kizami || {lunch:{s:0,r:0,l:0},dinner:{s:0,r:0,l:0}};
+    // 注文フォームで入力された刻みも合算
+    const fk = o.specialItems?.kizami?.enabled ? o.specialItems.kizami : null;
+    const addK = (meal) => ['s','r','l'].reduce((acc,k) => (acc[k] = (mk0[meal][k]||0) + (parseInt(fk?.[meal]?.[k])||0), acc), {});
+    const mk = { lunch: addK('lunch'), dinner: addK('dinner') };
+    const kBadge = (n) => n>0 ? `<span style="display:block;font-size:11px;color:#7c3aed;font-weight:700;margin-top:1px;">刻み×${n}</span>` : '';
+    const mAllergies = o._memberAllergies || [];
     const si = o.specialItems || {};
     const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
     const hasAllergy = aList.length > 0;
     const hasKizami  = si.kizami?.enabled;
     const hasOther   = si.other?.enabled;
-    const allergyClass = (hasAllergy || hasKizami) ? 'has-allergy' : '';
+    const allergyClass = (hasAllergy || hasKizami || mAllergies.length) ? 'has-allergy' : '';
 
     let typeBadge='';
     if (o._type==='tmpl')          typeBadge=`<span class="badge badge-green">定期</span>`;
@@ -2684,7 +2929,7 @@ function renderAdmin() {
     const tapBadge = (on) => on ? `<span style="display:inline-block;font-size:10px;font-weight:700;color:#0369a1;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap;">🥡</span>` : '';
     const misoBadge = (on) => on ? `<span style="display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap;">🍜</span>` : '';
 
-    const allergyBadge = (hasAllergy || hasKizami)
+    const allergyBadge = (hasAllergy || hasKizami || mAllergies.length)
       ? `<span style="display:inline-block;font-size:11px;font-weight:800;color:var(--danger);border:1.5px solid var(--danger);border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap;">アレルギー</span>`
       : '';
     const facNameCell = `${esc(f)}${typeBadge}${allergyBadge}${lMiso||dMiso ? `<span style="font-size:11px;margin-left:4px;">🍜</span>` : ''}`;
@@ -2747,19 +2992,50 @@ function renderAdmin() {
       ? `<button onclick="toggleMemberDetail('${esc(f)}','${date}')" id="mdetail-btn-${esc(f)}-${date}" style="font-size:11px;padding:2px 8px;border:1px solid #e2e8f0;border-radius:5px;background:white;color:#64748b;cursor:pointer;margin-left:6px;white-space:nowrap;">▼ 詳細</button>`
       : '';
 
+    // サイズ別のメンバーアレルギー（数字の下に表示）
+    const aBadge = (meal, size) => {
+      const cnt = {};
+      mAllergies.forEach(a => {
+        if (a[meal] !== size) return;
+        cnt[a.detail] = (cnt[a.detail]||0) + (meal==='dinner' ? (a.dc||1) : 1);
+      });
+      // 注文フォームで入力されたアレルギー
+      aList.forEach(a => {
+        const sizes = meal==='lunch' ? (a.lunch || {s:a.s||0, r:a.r||0, l:a.l||0}) : (a.dinner || {});
+        const n = parseInt(sizes[size]) || 0;
+        if (!n) return;
+        const key = a.detail || 'アレルギー';
+        cnt[key] = (cnt[key]||0) + n;
+      });
+      return Object.entries(cnt).map(([d,n]) =>
+        `<span style="display:block;font-size:11px;color:#dc2626;font-weight:700;margin-top:1px;">${esc(d)}×${n}</span>`).join('');
+    };
     return `<tr class="${allergyClass}" style="border-top:2px solid #e2e8f0;">
       <td class="td-name">${facNameCell}${detailBtn}</td>
-      <td class="td-l">${ls||'−'}</td>
-      <td class="td-l">${lr||'−'}</td>
-      <td class="td-l">${ll||'−'}</td>
+      <td class="td-l">${ls||'−'}${kBadge(mk.lunch.s)}${aBadge('lunch','s')}</td>
+      <td class="td-l">${lr||'−'}${kBadge(mk.lunch.r)}${aBadge('lunch','r')}</td>
+      <td class="td-l">${ll||'−'}${kBadge(mk.lunch.l)}${aBadge('lunch','l')}</td>
       <td class="td-ls">${lt}${tapBadge(lTapper)}${misoBadge(lMiso)}${ltap>0?`<span style="font-size:11px;color:#92400e;font-weight:700;display:block;">🥡×${ltap}</span>`:''}</td>
-      <td class="td-d">${ds||'−'}</td>
-      <td class="td-d">${dr||'−'}</td>
-      <td class="td-d">${dl||'−'}</td>
+      <td class="td-d">${ds||'−'}${kBadge(mk.dinner.s)}${aBadge('dinner','s')}</td>
+      <td class="td-d">${dr||'−'}${kBadge(mk.dinner.r)}${aBadge('dinner','r')}</td>
+      <td class="td-d">${dl||'−'}${kBadge(mk.dinner.l)}${aBadge('dinner','l')}</td>
       <td class="td-ds">${dt}${tapBadge(dTapper)}${misoBadge(dMiso)}${dtap>0?`<span style="font-size:11px;color:#92400e;font-weight:700;display:block;">🥡×${dtap}</span>`:''}</td>
       <td><button class="btn btn-warn btn-xs" onclick="openCorrection('${esc(f)}','${date}')">訂正</button></td>
     </tr>${memberDetailHtml}`;
   }).join('');
+
+  // 個人注文の行（一番下）
+  const poCnt = n => n || '−';
+  const sidesBadge = n => n>0 ? `<span style="display:block;font-size:11px;color:#a16207;font-weight:700;margin-top:1px;">おかずのみ×${n}</span>` : '';
+  const poLt = po.lunch.s+po.lunch.r+po.lunch.l+lSides, poDt = po.dinner.s+po.dinner.r+po.dinner.l+dSides;
+  const poRow = poToday.length ? `<tr style="border-top:3px double #93c5fd;background:#f8fbff;">
+      <td class="td-name">👤 個人注文<span style="font-size:11px;color:var(--muted);margin-left:4px;">${poToday.length}名</span></td>
+      <td class="td-l">${poCnt(po.lunch.s)}</td><td class="td-l">${poCnt(po.lunch.r)}</td><td class="td-l">${poCnt(po.lunch.l)}</td>
+      <td class="td-ls">${poLt}${sidesBadge(lSides)}</td>
+      <td class="td-d">${poCnt(po.dinner.s)}</td><td class="td-d">${poCnt(po.dinner.r)}</td><td class="td-d">${poCnt(po.dinner.l)}</td>
+      <td class="td-ds">${poDt}${sidesBadge(dSides)}</td>
+      <td></td>
+    </tr>` : '';
 
   document.getElementById('admin-tbl').innerHTML=`
     <thead>
@@ -2774,13 +3050,23 @@ function renderAdmin() {
         <th class="th-size-d">半盛</th><th class="th-size-d">普通</th><th class="th-size-d">大盛</th><th class="th-calc-d">計</th>
       </tr>
     </thead>
-    <tbody>${rows}</tbody>
+    <tbody>${rows}${poRow}${noOrderFacs.length ? `<tr style="opacity:0.6;">
+      <td colspan="10" style="text-align:left;font-size:12px;color:var(--muted);padding:8px 12px;">注文なし：${noOrderFacs.map(esc).join('・')}</td>
+    </tr>` : ''}</tbody>
     <tfoot><tr>
       <td style="text-align:left;">合計</td>
-      <td class="td-l">${lS}</td><td class="td-l">${lR}</td><td class="td-l">${lL}</td><td class="td-ls">${tL}</td>
-      <td class="td-d">${dS}</td><td class="td-d">${dR}</td><td class="td-d">${dL}</td><td class="td-ds">${tD}</td>
+      <td class="td-l">${lS}</td><td class="td-l">${lR}</td><td class="td-l">${lL}</td><td class="td-ls">${tL}${sidesBadge(lSides)}</td>
+      <td class="td-d">${dS}</td><td class="td-d">${dR}</td><td class="td-d">${dL}</td><td class="td-ds">${tD}${sidesBadge(dSides)}</td>
       <td></td>
     </tr></tfoot>`;
+
+  // その日に注文がない食事の列は隠す（両方0なら両方表示）
+  const tblEl = document.getElementById('admin-tbl');
+  tblEl.classList.toggle('hide-lunch',  tL === 0 && tD > 0);
+  tblEl.classList.toggle('hide-dinner', tD === 0 && tL > 0);
+
+  // 個人注文セクション描画
+  renderPersonalSection(date);
 }
 
 // ── メンバー詳細展開 ──────────────────────────────────────
@@ -2824,7 +3110,7 @@ function toggleMemberCancel(f, date, memberId) {
   if (date === today) {
     const h = new Date().getHours();
     if (h >= 9) {
-      toast('🔒 9時を過ぎています。当日変更はお電話でご連絡ください', 'ng');
+      toast(LOCK_MSG, 'ng');
       return;
     }
   }
@@ -2879,11 +3165,22 @@ function renderMemberMaster() {
           <option value="2" ${dc===2?'selected':''}>×2</option>
           <option value="3" ${dc===3?'selected':''}>×3</option>
         </select>` : '';
+      const kizamiChk = `<label style="display:flex;align-items:center;gap:3px;font-size:12px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text);cursor:pointer;white-space:nowrap;">
+        <input type="checkbox" ${m.kizami?'checked':''} onchange="updateMemberInfo('${esc(f)}','${id}','kizami',this.checked)" style="width:13px;height:13px;">刻み
+      </label>`;
+      const allergyChk = `<label style="display:flex;align-items:center;gap:3px;font-size:12px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text);cursor:pointer;white-space:nowrap;">
+        <input type="checkbox" id="alg-chk-${id}" ${m.allergy?.enabled?'checked':''} onchange="updateMemberInfo('${esc(f)}','${id}','allergyEnabled',this.checked);toggleAllergyInput('${id}',this.checked)" style="width:13px;height:13px;">アレルギー
+      </label>
+      <input type="text" id="alg-inp-${id}" placeholder="例：卵・乳" value="${esc(m.allergy?.detail||'')}" ${m.allergy?.enabled?'':'style="display:none;"'}
+        onchange="updateMemberInfo('${esc(f)}','${id}','allergyDetail',this.value)"
+        style="width:100px;padding:3px 6px;border:1.5px solid #fca5a5;border-radius:5px;font-size:12px;font-family:inherit;">`;
       return `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);">
-        <span style="flex:1;font-size:14px;font-weight:600;">${esc(m.name||id)}</span>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+        <span style="font-size:14px;font-weight:600;min-width:80px;">${esc(m.name||id)}</span>
         ${lunchSel}${dinnerSel}
-        <button onclick="deleteMember('${esc(f)}','${id}')" style="font-size:11px;padding:3px 8px;border:1px solid #fca5a5;border-radius:6px;background:white;color:#dc2626;cursor:pointer;">削除</button>
+        ${kizamiChk}
+        ${allergyChk}
+        <button onclick="deleteMember('${esc(f)}','${id}')" style="font-size:11px;padding:3px 8px;border:1px solid #fca5a5;border-radius:6px;background:white;color:#dc2626;cursor:pointer;margin-left:auto;">削除</button>
       </div>`;
     }).join('');
 
@@ -2954,6 +3251,22 @@ function deleteMember(f, id) {
   }
 }
 
+function updateMemberInfo(f, id, field, val) {
+  const members = JSON.parse(JSON.stringify(getMembers()));
+  if (!members[f]?.[id]) return;
+  const m = members[f][id];
+  if (field === 'kizami')        { m.kizami = val; }
+  if (field === 'allergyEnabled') { if (!m.allergy) m.allergy = {}; m.allergy.enabled = val; }
+  if (field === 'allergyDetail')  { if (!m.allergy) m.allergy = {}; m.allergy.detail  = val; }
+  saveMembers(members);
+  renderAdmin();
+}
+
+function toggleAllergyInput(id, show) {
+  const inp = document.getElementById(`alg-inp-${id}`);
+  if (inp) inp.style.display = show ? '' : 'none';
+}
+
 function getMemberSizeForDate(m, date) {
   const h = m.sizeHistory;
   if (!h || !h.length) return { lunchSize: m.lunchSize||'r', dinnerSize: m.dinnerSize||'r', dinnerCount: m.dinnerCount||1 };
@@ -2976,14 +3289,17 @@ function updateMemberSize(f, id, meal, val) {
   const members = JSON.parse(JSON.stringify(getMembers()));
   if (!members[f] || !members[f][id]) return;
   const m = members[f][id];
+  const prevSize = { lunchSize: m.lunchSize||'r', dinnerSize: m.dinnerSize||'r', dinnerCount: m.dinnerCount||1 };
   if (meal === 'lunch')            m.lunchSize   = val;
   else if (meal === 'dinner')      m.dinnerSize  = val;
   else if (meal === 'dinnerCount') m.dinnerCount = parseInt(val) || 1;
-  // 変更を今日付きで履歴に記録（今日分は上書き）
-  const today = getTodayStr();
+  // 変更は「変更できる最初の日」から有効（当日9時以降は翌日から）。初回は変更前のサイズを過去分として残す
+  const from = firstEditableDate();
   if (!m.sizeHistory) m.sizeHistory = [];
-  m.sizeHistory = m.sizeHistory.filter(e => e.from !== today);
-  m.sizeHistory.push({ lunchSize: m.lunchSize||'r', dinnerSize: m.dinnerSize||'r', dinnerCount: m.dinnerCount||1, from: today });
+  if (!m.sizeHistory.length) m.sizeHistory.push({ ...prevSize, from: '0000-00-00' });
+  m.sizeHistory = m.sizeHistory.filter(e => e.from !== from);
+  m.sizeHistory.push({ lunchSize: m.lunchSize||'r', dinnerSize: m.dinnerSize||'r', dinnerCount: m.dinnerCount||1, from });
+  toast(`${m.name||''}：${fmtDate(from)}から反映します`, 'ok');
   saveMembers(members);
   if (meal === 'dinnerCount') renderSettings();
 }
@@ -3050,18 +3366,23 @@ function switchHTab(panel, btn) {
 }
 
 // ── 注文一覧 ─────────────────────────────────────────────
+// 履歴：既定は過去60日〜2週間先。定期分も含めた実績で表示
 function getAllItems(facFlt, fromFlt, toFlt) {
-  const orders=getOrders();
-  let items=[];
-  Object.entries(orders).forEach(([date,facs]) => {
-    if (fromFlt&&date<fromFlt) return;
-    if (toFlt  &&date>toFlt)   return;
-    Object.entries(facs).forEach(([f,d]) => {
-      if (facFlt&&f!==facFlt) return;
-      items.push({date,f,...d});
-    });
-  });
-  return items.sort((a,b) => b.date.localeCompare(a.date)||a.f.localeCompare(b.f));
+  const shift = n => { const d = new Date(); d.setDate(d.getDate() + n); return toDateStr(d); };
+  const from = fromFlt || shift(-60);
+  const to   = toFlt   || shift(14);
+  return getEffectiveItems(from, to).filter(i => !facFlt || i.f === facFlt);
+}
+
+// その日に食べないメンバー（一時停止・当日キャンセル）の名前
+function getMembersOffForDate(f, date) {
+  if (!isMemberManaged(f)) return [];
+  const ovs = getOrders()[date]?.[f]?.members || {};
+  return Object.entries(getMembers()[f] || {}).filter(([id, m]) => {
+    if (m.exitDate && date >= m.exitDate) return false;
+    if (m.entryDate && date < m.entryDate) return false;
+    return ovs[id]?.cancelled || (m.suspensions || []).some(s => date >= s.from && date <= s.to);
+  }).map(([id, m]) => m.name || id);
 }
 
 // 定期注文テンプレートを補完した「実効データ」を返す
@@ -3080,29 +3401,8 @@ function getEffectiveItems(from, to) {
     const dayData = orders[dateStr] || {};
 
     FACILITIES.forEach(f => {
-      if (dayData[f]) {
-        // 明示的注文があればそちらを使う
-        items.push({ date: dateStr, f, ...dayData[f] });
-      } else if (REPEAT_SET.has(f) && tmpls[f]) {
-        // その日付時点のテンプレートを使用（変更前後で過去に影響しない）
-        const tmplForDate = getTemplateForDate(f, dateStr) || tmpls[f];
-        const days = tmplForDate.days || [1,2,3,4,5];
-        if (days.includes(dow)) {
-          const allMembers = getMembers()[f];
-          let lunch, dinner;
-          if (allMembers) {
-            const t = calcMemberTotals(f, {}, dateStr);
-            lunch  = t.lunch;
-            dinner = t.dinner;
-          } else {
-            const sL = tmplForDate.serves_lunch  !== false;
-            const sD = tmplForDate.serves_dinner !== false;
-            lunch  = sL ? { ...tmplForDate.lunch  } : {s:0,r:0,l:0};
-            dinner = sD ? { ...tmplForDate.dinner } : {s:0,r:0,l:0};
-          }
-          items.push({ date: dateStr, f, lunch, dinner, _fromTemplate: true });
-        }
-      }
+      const fd = getFacilityDay(f, dateStr);
+      if (fd) items.push({ ...fd, date: dateStr, f });
     });
   }
 
@@ -3115,7 +3415,29 @@ function renderHistory() {
   const toFlt  =document.getElementById('h-to')?.value      ||'';
   const items  =getAllItems(facFlt,fromFlt,toFlt);
   const el=document.getElementById('history-list');
-  if (!items.length) { el.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>注文履歴がありません</p></div>`; return; }
+
+  // 個人注文ログ（絞り込み適用）
+  const actionLabel = { add:'追加', remove:'追加の取り消し', cancel:'キャンセル', restore:'キャンセルの取り消し' };
+  const poLog = (DB.personal_order_log||[]).filter(e => {
+    if (fromFlt && e.date < fromFlt) return false;
+    if (toFlt   && e.date > toFlt  ) return false;
+    return true;
+  });
+  const poHtml = poLog.map(e => {
+    const aLabel = (e.meal==='lunch' ? '☀️ 昼食　' : e.meal==='dinner' ? '🌙 夕食　' : '') + (actionLabel[e.action] || e.action);
+    const aColor = e.action==='cancel' ? '#dc2626' : e.action==='remove' ? '#d97706' : '#16a34a';
+    const ts = e.changedAt ? new Date(e.changedAt).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="hist-item" style="border-left:3px solid ${aColor};">
+      <div class="hist-header">
+        <div class="hist-facility" style="color:${aColor};">👤 ${esc(e.name)}</div>
+        <div class="hist-date">${fmtDate(e.date)}</div>
+      </div>
+      <div style="font-size:12px;color:${aColor};font-weight:600;margin-top:4px;">${aLabel}</div>
+      ${ts?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${ts}</div>`:''}
+    </div>`;
+  }).join('');
+
+  if (!items.length && !poLog.length) { el.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>注文履歴がありません</p></div>`; return; }
   el.innerHTML=items.map(item => {
     const lt=lT(item), dt=dT(item);
     const lTag=lt?`<span class="hist-tag tag-lunch">☀️ 昼 ${lt}食（小${item.lunch.s} / 普${item.lunch.r} / 大${item.lunch.l}）</span>`:'';
@@ -3123,11 +3445,15 @@ function renderHistory() {
     const spText=specialItemsToText(item.specialItems)||item.allergy||'';
     const aNote=spText?`<div class="allergy-note">⚠️ ${esc(spText)}</div>`:'';
     const corrBadge=item.corrected?`<span class="badge badge-orange" style="margin-left:8px;">訂正済</span>`:'';
+    const tmplBadge=item._fromTemplate?`<span class="badge" style="margin-left:8px;background:#e0f2fe;color:#0369a1;">定期</span>`:'';
+    const off=getMembersOffForDate(item.f,item.date);
+    const offNote=off.length?`<div style="font-size:12px;color:#dc2626;margin-top:4px;">休み：${off.map(esc).join('、')}</div>`:'';
+    if (!lt && !dt && !off.length) return '';
     return `<div class="hist-item">
-      <div class="hist-header"><div class="hist-facility">${item.f}${corrBadge}</div><div class="hist-date">${fmtDate(item.date)}</div></div>
-      <div class="hist-tags">${lTag}${dTag}</div>${aNote}
+      <div class="hist-header"><div class="hist-facility">${item.f}${tmplBadge}${corrBadge}</div><div class="hist-date">${fmtDate(item.date)}</div></div>
+      <div class="hist-tags">${lTag}${dTag}</div>${offNote}${aNote}
     </div>`;
-  }).join('');
+  }).join('') + poHtml;
 }
 function resetHistory() {
   document.getElementById('h-facility').value='';
@@ -3150,6 +3476,60 @@ function renderMonthly() {
   const el = document.getElementById('monthly-out');
   if (!allItems.length) {
     el.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>${y}年${m}月のデータはありません</p></div>`;
+    return;
+  }
+
+  if (fac === '__personal__') {
+    const { lines, groups } = getPersonalLedger(ym);
+    if (!lines.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">👤</div><p>${y}年${m}月の個人注文はありません</p></div>`;
+      return;
+    }
+    const yen = n => '¥' + n.toLocaleString();
+    const total = groups.reduce((s,g)=>s+g.amount,0), totalQty = groups.reduce((s,g)=>s+g.qty,0);
+    const sumBody = groups.map(g => g.items.map((it,idx) => `<tr>
+        <td style="text-align:left;font-weight:700;">${idx===0?esc(g.name):''}</td>
+        <td>${idx===0?g.cat:''}</td>
+        <td style="text-align:left;">${it.label}</td>
+        <td>${it.qty}</td><td>${yen(it.unit)}</td><td>${yen(it.unit*it.qty)}</td>
+      </tr>`).join('') + `<tr style="background:#f8fafc;">
+        <td></td><td></td><td style="text-align:left;font-weight:700;">小計</td>
+        <td style="font-weight:700;">${g.qty}</td><td></td><td style="font-weight:700;">${yen(g.amount)}</td>
+      </tr>`).join('');
+    const detailBody = lines.map(l => {
+      const dt = new Date(l.date+'T00:00:00');
+      return `<tr>
+        <td style="text-align:left;">${parseInt(l.date.slice(5,7))}/${parseInt(l.date.slice(8))}（${DAYS_JP[dt.getDay()]}）</td>
+        <td style="text-align:left;">${esc(l.name)}</td><td>${l.cat}</td>
+        <td>${l.meal==='昼'?'☀️ 昼':'🌙 夕'}</td><td>${l.item}</td><td>${yen(l.unit)}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:16px;">${y}年${m}月　個人注文（キャンセル・一時停止を除いた実績）</div>
+      <h3 style="margin-bottom:10px;">集計（数量 × 単価 ＝ 金額）</h3>
+      <div class="month-tbl-wrap" style="margin-bottom:24px;">
+        <table class="month-tbl">
+          <thead><tr>
+            <th style="text-align:left;">名前</th><th>区分</th><th style="text-align:left;">内容</th>
+            <th>数量</th><th>単価</th><th>金額</th>
+          </tr></thead>
+          <tbody>${sumBody}</tbody>
+          <tfoot><tr>
+            <td>合計</td><td></td><td></td><td>${totalQty}</td><td></td><td>${yen(total)}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+      <details>
+        <summary style="cursor:pointer;font-weight:700;font-size:15px;margin-bottom:10px;">明細（${lines.length}件）：いつ・誰が・何を</summary>
+        <div class="month-tbl-wrap" style="margin-top:10px;">
+          <table class="month-tbl">
+            <thead><tr>
+              <th style="text-align:left;">日付</th><th style="text-align:left;">名前</th><th>区分</th>
+              <th>食事</th><th>内容</th><th>単価</th>
+            </tr></thead>
+            <tbody>${detailBody}</tbody>
+          </table>
+        </div>
+      </details>`;
     return;
   }
 
@@ -3295,6 +3675,9 @@ function renderMonthly() {
     }).join('');
 
     el.innerHTML=`${summHtml}
+      <h3 style="margin-bottom:10px;">💴 金額</h3>
+      ${billingTableHtml(getFacilityBilling(items), '事業所')}
+      <h3 style="margin-bottom:10px;">日別</h3>
       <div class="month-tbl-wrap">
         <table class="month-tbl">
           <thead>
@@ -3358,7 +3741,87 @@ function renderMonthly() {
       </tr>`;
     }).join('');
 
-    el.innerHTML=`${summHtml}
+    // 個人注文の月次集計
+    const poItems = getPersonalItemsForMonth(ym);
+    const poByDate = {}, poByDateD = {};
+    poItems.forEach(p => {
+      poByDate[p.date]  = (poByDate[p.date] ||0) + (p.serves_lunch ?1:0);
+      poByDateD[p.date] = (poByDateD[p.date]||0) + (p.serves_dinner?1:0);
+    });
+    const poTotalL = poItems.filter(p=>p.serves_lunch).length;
+    const poTotalD = poItems.filter(p=>p.serves_dinner).length;
+    const poNames  = [...new Set(poItems.map(p=>p.name))].sort();
+
+    // 個人注文を事業所集計に追加
+    const poSz = { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0} };
+    poItems.forEach(p => {
+      if (p.mealType === 'sides') return;
+      if (p.serves_lunch)  poSz.lunch[p.lunchSize||'r']++;
+      if (p.serves_dinner) poSz.dinner[p.dinnerSize||'r']++;
+    });
+    const dash = n => n || '−';
+    const poFacRow = poTotalL+poTotalD > 0 ? `<tr>
+      <td style="font-weight:700;">👤 個人注文</td>
+      <td class="td-l">${dash(poSz.lunch.s)}</td><td class="td-l">${dash(poSz.lunch.r)}</td><td class="td-l">${dash(poSz.lunch.l)}</td><td class="td-ls">${poTotalL}</td>
+      <td class="td-d">${dash(poSz.dinner.s)}</td><td class="td-d">${dash(poSz.dinner.r)}</td><td class="td-d">${dash(poSz.dinner.l)}</td><td class="td-ds">${poTotalD}</td>
+    </tr>` : '';
+
+    // 日別合計に個人注文を含める
+    const allDates = [...new Set([...allItems.map(i=>i.date), ...poItems.map(p=>p.date)])].sort();
+    const dayRowsWithPo = allDates.map(date => {
+      const dt=new Date(date+'T00:00:00');
+      const dayItems=allItems.filter(i=>i.date===date);
+      const dL=dayItems.reduce((s,i)=>s+lT(i),0) + (poByDate[date]||0);
+      const dD=dayItems.reduce((s,i)=>s+dT(i),0) + (poByDateD[date]||0);
+      const facs=dayItems.map(i=>`${i.f}:${lT(i)+dT(i)}食`).join('　');
+      const poCount = (poByDate[date]||0) + (poByDateD[date]||0);
+      const poNote = poCount ? `　👤個人:${poCount}食` : '';
+      return `<tr>
+        <td>${date}（${DAYS_JP[dt.getDay()]}）</td>
+        <td class="td-l">${dL}</td><td class="td-d">${dD}</td>
+        <td style="font-weight:700;">${dL+dD}</td>
+        <td style="font-size:12px;text-align:left;color:var(--muted);">${facs}${poNote}</td>
+      </tr>`;
+    }).join('');
+
+    // 個人注文 人別一覧
+    let poPersonTable = '';
+    if (poNames.length) {
+      const personRows = poNames.map(name => {
+        const dates = poItems.filter(p=>p.name===name).map(p=>p.date).sort();
+        const lCount = poItems.filter(p=>p.name===name&&p.serves_lunch).length;
+        const dCount = poItems.filter(p=>p.name===name&&p.serves_dinner).length;
+        return `<tr>
+          <td style="font-weight:600;">${esc(name)}</td>
+          <td style="text-align:left;">${dates.map(d=>parseInt(d.slice(8))).join('・')}</td>
+          <td class="td-ls">${lCount}</td>
+          <td class="td-ds">${dCount}</td>
+        </tr>`;
+      }).join('');
+      poPersonTable = `<h3 style="margin-bottom:10px;margin-top:24px;">👤 個人注文 人別一覧</h3>
+      <div class="month-tbl-wrap" style="margin-bottom:20px;">
+        <table class="month-tbl">
+          <thead><tr><th style="text-align:left;">名前</th><th style="text-align:left;">注文日</th><th style="background:#92400e;">☀️ 昼</th><th style="background:#4c1d95;">🌙 夕</th></tr></thead>
+          <tbody>${personRows}</tbody>
+        </table>
+      </div>`;
+    }
+
+    // 金額（事業所ごと・個人ごと）
+    const facBill = getFacilityBilling(allItems);
+    const poBill  = getPersonalLedger(ym).groups.map(g => ({ name: g.name, sub: g.cat, items: g.items, qty: g.qty, amount: g.amount }));
+    const facSum = facBill.reduce((s,g)=>s+g.amount,0), poSum = poBill.reduce((s,g)=>s+g.amount,0);
+    const moneyHtml = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 16px;">
+        <div style="flex:1;min-width:150px;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;"><div style="font-size:12px;color:var(--muted);font-weight:700;">事業所 合計</div><div style="font-size:22px;font-weight:800;">¥${facSum.toLocaleString()}</div></div>
+        <div style="flex:1;min-width:150px;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;"><div style="font-size:12px;color:var(--muted);font-weight:700;">個人注文 合計</div><div style="font-size:22px;font-weight:800;">¥${poSum.toLocaleString()}</div></div>
+        <div style="flex:1;min-width:150px;border:2px solid #1e3a5f;border-radius:10px;padding:10px 14px;background:#f8fafc;"><div style="font-size:12px;color:#1e3a5f;font-weight:700;">総合計</div><div style="font-size:22px;font-weight:800;color:#1e3a5f;">¥${(facSum+poSum).toLocaleString()}</div></div>
+      </div>
+      <h3 style="margin-bottom:10px;">💴 金額（事業所ごと）</h3>
+      ${facBill.length ? billingTableHtml(facBill, '事業所') : '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;">事業所の注文はありません</p>'}
+      ${poBill.length ? `<h3 style="margin-bottom:10px;">💴 金額（個人注文）</h3>${billingTableHtml(poBill, '名前')}` : ''}`;
+
+    el.innerHTML=`${summHtml}${moneyHtml}
       <h3 style="margin-bottom:10px;margin-top:4px;">事業所別 月間集計</h3>
       <div class="month-tbl-wrap" style="margin-bottom:20px;">
         <table class="month-tbl">
@@ -3373,30 +3836,30 @@ function renderMonthly() {
               <th>半盛</th><th>普通</th><th>大盛</th><th>計</th>
             </tr>
           </thead>
-          <tbody>${facRows}</tbody>
+          <tbody>${facRows}${poFacRow}</tbody>
           <tfoot><tr>
             <td>合計</td>
-            <td>${tlS}</td><td>${tlR}</td><td>${tlL}</td><td>${tL}</td>
-            <td>${tdS}</td><td>${tdR}</td><td>${tdL}</td><td>${tD}</td>
+            <td>${tlS}</td><td>${tlR}</td><td>${tlL}</td><td>${tL+poTotalL}</td>
+            <td>${tdS}</td><td>${tdR}</td><td>${tdL}</td><td>${tD+poTotalD}</td>
           </tr></tfoot>
         </table>
       </div>
       <h3 style="margin-bottom:10px;">日別 合計</h3>
-      <div class="month-tbl-wrap">
+      <div class="month-tbl-wrap" style="margin-bottom:20px;">
         <table class="month-tbl">
           <thead><tr>
             <th>日付</th>
             <th style="background:#92400e;">昼食計</th>
             <th style="background:#4c1d95;">夕食計</th>
             <th>合計</th>
-            <th style="text-align:left;">事業所別内訳</th>
+            <th style="text-align:left;">内訳</th>
           </tr></thead>
-          <tbody>${dayRows}</tbody>
+          <tbody>${dayRowsWithPo}</tbody>
           <tfoot><tr>
-            <td>合計</td><td>${tL}</td><td>${tD}</td><td>${tL+tD}</td><td></td>
+            <td>合計</td><td>${tL+poTotalL}</td><td>${tD+poTotalD}</td><td>${tL+tD+poTotalL+poTotalD}</td><td></td>
           </tr></tfoot>
         </table>
-      </div>`;
+      </div>${poPersonTable}`;
   }
 }
 
@@ -3440,6 +3903,24 @@ function exportCSV() {
   const from  = `${ym}-01`;
   const lastD = new Date(y, m, 0).getDate();
   const to    = `${ym}-${String(lastD).padStart(2,'0')}`;
+
+  if (fac === '__personal__') {
+    const { lines: led, groups } = getPersonalLedger(ym);
+    if (!led.length) { toast('個人注文のデータがありません','ng'); return; }
+    const q = v => `"${String(v).replace(/"/g,'""')}"`;
+    const lines = ['【集計】', ['名前','区分','内容','数量','単価','金額'].join(',')];
+    groups.forEach(g => {
+      g.items.forEach(it => lines.push([q(g.name), g.cat, it.label, it.qty, it.unit, it.unit*it.qty].join(',')));
+      lines.push([q(g.name), g.cat, '小計', g.qty, '', g.amount].join(','));
+    });
+    lines.push(['合計','','',groups.reduce((s,g)=>s+g.qty,0),'',groups.reduce((s,g)=>s+g.amount,0)].join(','));
+    lines.push('', '【明細】', ['日付','名前','区分','食事','内容','単価'].join(','));
+    led.forEach(l => lines.push([l.date, q(l.name), l.cat, l.meal, l.item, l.unit].join(',')));
+    const blob = new Blob(['﻿' + lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `弁当注文_個人注文_${ym}.csv`; a.click();
+    return;
+  }
 
   if (fac === '__members__') {
     // メンバー別CSV（事業所ごとに 日付縦×メンバー横）
@@ -3784,7 +4265,7 @@ function renderSettings() {
           <hr style="border:none;border-top:1px solid var(--border);margin:10px 0 8px;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:12px;color:#dc2626;">退所日</span>
-            <input type="date" id="exitdate-${f}-${id}" value="${getTodayStr()}" style="border:1.5px solid #fca5a5;border-radius:6px;padding:4px 8px;font-size:12px;">
+            <input type="date" id="exitdate-${f}-${id}" value="${firstEditableDate()}" min="${firstEditableDate()}" style="border:1.5px solid #fca5a5;border-radius:6px;padding:4px 8px;font-size:12px;">
             <button onclick="dischargeMemember('${f}','${id}')" style="font-size:12px;padding:4px 12px;border:1px solid #fca5a5;border-radius:6px;background:none;cursor:pointer;color:#dc2626;">退所する</button>
           </div>
           <div style="font-size:10px;color:var(--muted);margin-top:4px;">退所日以降は注文から外れます</div>
@@ -3822,7 +4303,7 @@ function renderSettings() {
             <input type="text" id="nm-name-${f}" placeholder="名前" style="border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;width:100%;box-sizing:border-box;">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <span style="font-size:12px;color:var(--muted);">入所日</span>
-              <input type="date" id="nm-entry-${f}" value="${getTodayStr()}" style="border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;">
+              <input type="date" id="nm-entry-${f}" value="${firstEditableDate()}" style="border:1.5px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;">
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <span style="font-size:12px;color:var(--muted);">昼食</span>
@@ -3850,7 +4331,7 @@ function renderSettings() {
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted);">
           <label style="white-space:nowrap;">適用開始日</label>
-          <input type="date" id="tmpl-from-${f}" value="${getTodayStr()}" style="border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--text);background:var(--surface);">
+          <input type="date" id="tmpl-from-${f}" value="${firstEditableDate()}" min="${firstEditableDate()}" style="border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--text);background:var(--surface);">
           <span style="font-size:11px;color:var(--muted);">以降に反映</span>
         </div>
         <div class="setting-actions">
@@ -3886,7 +4367,7 @@ function renderSettings() {
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted);">
           <label style="white-space:nowrap;">適用開始日</label>
-          <input type="date" id="tmpl-from-${f}" value="${getTodayStr()}" style="border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--text);background:var(--surface);">
+          <input type="date" id="tmpl-from-${f}" value="${firstEditableDate()}" min="${firstEditableDate()}" style="border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--text);background:var(--surface);">
           <span style="font-size:11px;color:var(--muted);">以降に反映</span>
         </div>
         <div class="setting-actions">
@@ -3898,13 +4379,56 @@ function renderSettings() {
   }).join('');
 }
 
-function calcMemberTotals(f, paused, forDate) {
+function isMemberManaged(f) {
+  return REPEAT_SET.has(f) && Object.keys(getMembers()[f] || {}).length > 0;
+}
+
+// 調理画面・履歴・月次で共通の「その日の事業所の実績」
+// メンバー管理の事業所は、一時停止・退所・当日キャンセル・サイズ変更を反映してメンバーから計算する
+function getFacilityDay(f, date) {
+  const ent  = getOrders()[date]?.[f];
+  const tmpl = getTemplates()[f];
+  const hasEntry = !!(ent && (ent.lunch || ent.dinner));
+  let scheduled = false, t = null;
+  if (REPEAT_SET.has(f) && tmpl) {
+    t = getTemplateForDate(f, date) || tmpl;
+    const dow = new Date(date + 'T00:00:00').getDay();
+    const days = t.days || [0,1,2,3,4,5,6];
+    const isFacSusp = (tmpl.suspensions || []).some(s => date >= s.from && date <= s.to);
+    scheduled = days.includes(dow) && !isFacSusp;
+  }
+  if (isMemberManaged(f)) {
+    if (!scheduled && !hasEntry) return null;
+    const ovs = ent?.members || {};
+    const paused = Object.fromEntries(Object.entries(ovs).filter(([,v]) => v.cancelled).map(([id]) => [id, true]));
+    const mt = calcMemberTotals(f, paused, date, ovs);
+    return { ...(tmpl || {}), ...(ent || {}), lunch: mt.lunch, dinner: mt.dinner,
+      _type: hasEntry ? 'override' : 'tmpl', _noDays: !tmpl?.days, _kizami: mt.kizami,
+      _memberAllergies: mt.allergies, _fromTemplate: !hasEntry };
+  }
+  if (hasEntry) {
+    const isOverride = tmpl && REPEAT_SET.has(f) &&
+      JSON.stringify({ l: ent.lunch, d: ent.dinner }) !== JSON.stringify({ l: tmpl.lunch, d: tmpl.dinner });
+    return { ...ent, _type: REPEAT_SET.has(f) ? (isOverride ? 'override' : 'manual') : 'manual' };
+  }
+  if (!scheduled) return null;
+  const lunch  = t.serves_lunch  !== false ? { ...(t.lunch  || { s:0, r:0, l:0 }) } : { s:0, r:0, l:0 };
+  const dinner = t.serves_dinner !== false ? { ...(t.dinner || { s:0, r:0, l:0 }) } : { s:0, r:0, l:0 };
+  return { ...tmpl, lunch, dinner, allergy: '', _type: 'tmpl', _noDays: !tmpl.days, _fromTemplate: true };
+}
+
+function calcMemberTotals(f, paused, forDate, ovs) {
   const d = forDate || getTodayStr();
   const tmpl = getTemplateForDate(f, d) || {};
   const servesLunch  = tmpl.serves_lunch  !== false;
   const servesDinner = tmpl.serves_dinner !== false;
   const fMembers = getMembers()[f] || {};
-  const totals = { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0} };
+  const totals = {
+    lunch:  { s:0, r:0, l:0 },
+    dinner: { s:0, r:0, l:0 },
+    kizami: { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0} },
+    allergies: [] // [{name, detail}]
+  };
   Object.entries(fMembers).forEach(([id, m]) => {
     if (paused[id]) return;
     if (m.exitDate && d >= m.exitDate) return;
@@ -3912,11 +4436,20 @@ function calcMemberTotals(f, paused, forDate) {
     const isSuspended = (m.suspensions||[]).some(s => d >= s.from && d <= s.to);
     if (isSuspended) return;
     const sz = getMemberSizeForDate(m, d);
-    const ls = sz.lunchSize || '';
-    const ds = sz.dinnerSize || '';
+    const ov = (ovs || {})[id] || {};
+    const ls = (ov.lunch  !== undefined ? ov.lunch  : sz.lunchSize)  || '';
+    const ds = (ov.dinner !== undefined ? ov.dinner : sz.dinnerSize) || '';
     const dc = sz.dinnerCount || 1;
     if (servesLunch  && ls && totals.lunch[ls]  !== undefined) totals.lunch[ls]++;
     if (servesDinner && ds && totals.dinner[ds] !== undefined) totals.dinner[ds] += dc;
+    if (m.kizami) {
+      if (servesLunch  && ls && totals.kizami.lunch[ls]  !== undefined) totals.kizami.lunch[ls]++;
+      if (servesDinner && ds && totals.kizami.dinner[ds] !== undefined) totals.kizami.dinner[ds] += dc;
+    }
+    if (m.allergy?.enabled && m.allergy?.detail) {
+      totals.allergies.push({ name: m.name || id, detail: m.allergy.detail,
+        lunch: servesLunch ? ls : '', dinner: servesDinner ? ds : '', dc });
+    }
   });
   return totals;
 }
@@ -3947,7 +4480,8 @@ function saveTemplateFromMembers(f) {
   }
   const days = getActiveDays(f);
   if (days.length === 0) { toast('注文曜日を1日以上選択してください','ng'); return; }
-  const fromDate = document.getElementById(`tmpl-from-${f}`)?.value || getTodayStr();
+  const fromDate = document.getElementById(`tmpl-from-${f}`)?.value || firstEditableDate();
+  if (isPersonalDateLocked(fromDate)) { toast(LOCK_MSG + '（適用開始日を変更してください）', 'ng'); return; }
   const t = getTemplates();
   const snapshot = { lunch: totals.lunch, dinner: totals.dinner, days, serves_lunch: servesLunch, serves_dinner: servesDinner, from: fromDate };
   if (!t[f]) t[f] = {};
@@ -4050,7 +4584,8 @@ function addNewMemberFromTemplate(f) {
   const members = JSON.parse(JSON.stringify(getMembers()));
   if (!members[f]) members[f] = {};
   const id = 'm' + Date.now();
-  const entryDate = entryEl?.value || getTodayStr();
+  const entryDate = entryEl?.value || firstEditableDate();
+  if (isPersonalDateLocked(entryDate)) { toast(LOCK_MSG + '（入所日を変更してください）', 'ng'); return; }
   const dinnerCount = parseInt(dcEl?.value||'1') || 1;
   members[f][id] = { name, lunchSize: lunchEl?.value||'', dinnerSize: dinnerEl?.value||'', dinnerCount, entryDate };
   saveMembers(members);
@@ -4063,7 +4598,8 @@ function addNewMemberFromTemplate(f) {
 function dischargeMemember(f, id) {
   const members = JSON.parse(JSON.stringify(getMembers()));
   if (!members[f]?.[id]) return;
-  const exitDate = document.getElementById(`exitdate-${f}-${id}`)?.value || getTodayStr();
+  const exitDate = document.getElementById(`exitdate-${f}-${id}`)?.value || firstEditableDate();
+  if (isPersonalDateLocked(exitDate)) { toast(LOCK_MSG + '（退所日を変更してください）', 'ng'); return; }
   members[f][id].exitDate = exitDate;
   saveMembers(members);
   renderSettings();
@@ -4090,6 +4626,7 @@ function addMemberSusp(f, id) {
   const reason = document.getElementById(`sr-${f}-${id}`)?.value || 'その他';
   if (!from) { toast('開始日を入力してください','ng'); return; }
   if (to < from) { toast('終了日は開始日以降にしてください','ng'); return; }
+  if (isPersonalDateLocked(from)) { toast(LOCK_MSG, 'ng'); return; }
   const members = JSON.parse(JSON.stringify(getMembers()));
   if (!members[f]?.[id]) return;
   members[f][id].suspensions = [...(members[f][id].suspensions||[]), {from, to, reason}];
@@ -4102,7 +4639,7 @@ function addMemberSusp(f, id) {
 function removeMemberSusp(f, id, idx) {
   const members = JSON.parse(JSON.stringify(getMembers()));
   if (!members[f]?.[id]?.suspensions) return;
-  members[f][id].suspensions.splice(idx, 1);
+  if (!trimSuspension(members[f][id].suspensions, idx)) return;
   saveMembers(members);
   renderSettings();
   toast('一時停止を削除しました', 'ok');
@@ -4127,6 +4664,7 @@ function addSuspension(f) {
   const to   = (toEl?.style.display !== 'none' ? toEl?.value : '') || from;
   if (!from) { toast('開始日を入力してください','ng'); return; }
   if (to < from) { toast('終了日は開始日以降にしてください','ng'); return; }
+  if (isPersonalDateLocked(from)) { toast(LOCK_MSG, 'ng'); return; }
   const t = getTemplates();
   if (!t[f]) { toast('先に定期注文を設定してください','ng'); return; }
   t[f].suspensions = [...(t[f].suspensions||[]), {from, to}];
@@ -4139,7 +4677,7 @@ function addSuspension(f) {
 function removeSuspension(f, idx) {
   const t = getTemplates();
   if (!t[f]?.suspensions) return;
-  t[f].suspensions.splice(idx, 1);
+  if (!trimSuspension(t[f].suspensions, idx)) return;
   saveTemplates(t);
   renderSettings();
   toast(`休止日を削除しました`, 'ok');
@@ -4157,7 +4695,8 @@ function saveTemplate(f) {
   if (ls+lr+ll+ds+dr+dl===0) { toast('注文数を1以上入力してください','ng'); return; }
   const days=getActiveDays(f);
   if (days.length===0) { toast('注文曜日を1日以上選択してください','ng'); return; }
-  const fromDate = document.getElementById(`tmpl-from-${f}`)?.value || getTodayStr();
+  const fromDate = document.getElementById(`tmpl-from-${f}`)?.value || firstEditableDate();
+  if (isPersonalDateLocked(fromDate)) { toast(LOCK_MSG + '（適用開始日を変更してください）', 'ng'); return; }
   const t=getTemplates();
   const snapshot = { lunch:{s:ls,r:lr,l:ll}, dinner:{s:ds,r:dr,l:dl}, days, serves_lunch:servesLunch, serves_dinner:servesDinner, from: fromDate };
   if (!t[f]) t[f]={};
@@ -4190,6 +4729,764 @@ function toggleDayDetail(uid, headerRow) {
   const isOpen  = subRows.length > 0 && subRows[0].style.display !== 'none';
   subRows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
   if (icon) icon.textContent = isOpen ? '▼ 内訳' : '▲ 閉じる';
+}
+
+// ── 個人注文機能 ──────────────────────────────────────────
+
+function switchMasterTab(tab) {
+  ['gh','personal'].forEach(t => {
+    const btn  = document.getElementById('mmtab-'+t);
+    const cont = document.getElementById('mmtab-'+t+'-content');
+    if (btn)  { btn.style.background = t===tab ? 'var(--primary)' : '#e2e8f0'; btn.style.color = t===tab ? 'white' : '#64748b'; }
+    if (cont) cont.style.display = t===tab ? '' : 'none';
+  });
+  if (tab === 'personal') {
+    const dl = getPersonalDeadline();
+    const inp = document.getElementById('po-deadline-day');
+    if (inp) inp.value = dl.day || 25;
+    const gasInp = document.getElementById('po-gas-url');
+    if (gasInp) gasInp.value = getGasUrl();
+    renderPersonalMaster();
+    renderPersonalPendingList();
+  }
+}
+
+function savePersonalDeadlineSetting() {
+  const day = parseInt(document.getElementById('po-deadline-day')?.value) || 25;
+  savePersonalDeadline({ day });
+  renderPersonalScheduleForm();
+  toast(`締め切りを毎月${day}日に設定しました ✓`, 'ok');
+}
+
+function saveGasUrlSetting() {
+  const url = document.getElementById('po-gas-url')?.value.trim() || '';
+  saveGasUrl(url);
+  toast(url ? 'GAS URLを保存しました ✓' : 'GAS URLをクリアしました', 'ok');
+}
+
+function notifyPendingToSlack() {
+  const po = getPersonalOrders();
+  const schedules = getPersonalSchedules();
+  const monthlyPeople = Object.entries(po).filter(([,p])=>p.scheduleType==='monthly');
+  const now = new Date();
+  const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1);
+  const ym = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth()+1).padStart(2,'0')}`;
+  const ymLabel = `${nextMonth.getFullYear()}年${nextMonth.getMonth()+1}月`;
+  const pending = monthlyPeople.filter(([id, p])=>!isPoSubmitted(p, schedules[id]?.[ym]));
+  if (!pending.length) { toast('全員提出済みです ✓', 'ok'); return; }
+  const names = pending.map(([,p])=>p.name).join('、');
+  notifySlack(`🍱 【弁当スケジュール未提出】${ymLabel}分\n${names}\nまだ提出が完了していません。定期注文フォームから入力をお願いします。`);
+  toast(`Slackに通知しました（${pending.length}名）`, 'ok');
+}
+
+// 指定日に個人注文があるかを返す（weekly or monthly）
+// 月間の個人注文実績を返す（キャンセル済み日付を除外）
+function getPersonalItemsForMonth(ym) {
+  const po = getPersonalOrders();
+  const schedules = getPersonalSchedules();
+  const [y, m] = ym.split('-').map(Number);
+  const lastD = new Date(y, m, 0).getDate();
+  const result = [];
+  Object.entries(po).forEach(([id, p]) => {
+    const sc = schedules[id]?.[ym] || {};
+    const isSusp = d => (p.suspensions||[]).some(s => d >= s.from && d <= s.to);
+    const dates = [];
+    for (let d = 1; d <= lastD; d++) {
+      const dateStr = `${ym}-${String(d).padStart(2,'0')}`;
+      if (isPersonalDateOn(p, sc, dateStr)) dates.push(dateStr);
+    }
+    dates.filter(d => !isSusp(d)).forEach(date => {
+      const sz = getMemberSizeForDate(p, date);
+      result.push({ id, name: p.name||id, date, serves_lunch: isPersonalDateOn(p, sc, date, 'lunch'), serves_dinner: isPersonalDateOn(p, sc, date, 'dinner'), mealType: p.mealType,
+        category: p.category, lunchSize: sz.lunchSize || 'r', dinnerSize: sz.dinnerSize || 'r' });
+    });
+  });
+  return result.sort((a,b) => a.date.localeCompare(b.date));
+}
+
+// 月次：事業所ごとの「内容×数量×単価＝金額」
+function getFacilityBilling(items) {
+  const p = getPrices();
+  const misoP = p.misoPrice || 0;
+  const SZ = { s:'半盛', r:'普通', l:'大盛' };
+  const byFac = {};
+  items.forEach(it => {
+    const f = it.f;
+    const g = byFac[f] || (byFac[f] = { name: f, rows: {}, qty: 0, amount: 0 });
+    [['lunch','昼'],['dinner','夕']].forEach(([meal, ml]) => {
+      const o = it[meal] || {};
+      const miso = isMiso(f, meal) ? misoP : 0;
+      const add = (key, label, qty, unit) => {
+        if (!qty) return;
+        const r = g.rows[key] || (g.rows[key] = { label, unit, qty: 0, order: Object.keys(g.rows).length });
+        r.qty += qty; g.qty += qty; g.amount += qty * unit;
+      };
+      if (!it.irregular && isTapper(f, meal)) {
+        add(`${meal}-t`, `${ml}・タッパー`, (o.s||0)+(o.r||0)+(o.l||0)+(o.t||0), (getPrice(meal,'tapper')||0) + miso);
+      } else {
+        ['s','r','l'].forEach(sz => add(`${meal}-${sz}`, `${ml}・${SZ[sz]}${miso?'（味噌汁付）':''}`, o[sz]||0, (getPrice(meal,sz)||0) + miso));
+        add(`${meal}-t`, `${ml}・タッパー`, o.t||0, (getPrice(meal,'tapper')||0) + miso);
+      }
+    });
+  });
+  const mealOrder = l => l.startsWith('昼') ? 0 : 1;
+  return FACILITIES.filter(f => byFac[f]?.qty).map(f => ({
+    ...byFac[f], items: Object.values(byFac[f].rows).sort((a,b) => mealOrder(a.label)-mealOrder(b.label) || a.order-b.order)
+  }));
+}
+
+// 金額表（数量 × 単価 ＝ 金額）。groups: [{name, sub?, items:[{label,qty,unit}], qty, amount}]
+function billingTableHtml(groups, firstColLabel) {
+  const yen = n => '¥' + n.toLocaleString();
+  const total = groups.reduce((s,g)=>s+g.amount,0), totalQty = groups.reduce((s,g)=>s+g.qty,0);
+  const body = groups.map(g => g.items.map((it,idx) => `<tr>
+      <td style="text-align:left;font-weight:700;">${idx===0?esc(g.name):''}${idx===0&&g.sub?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px;">${g.sub}</span>`:''}</td>
+      <td style="text-align:left;">${it.label}</td>
+      <td>${it.qty}</td><td>${it.unit?yen(it.unit):'未設定'}</td><td>${yen(it.unit*it.qty)}</td>
+    </tr>`).join('') + `<tr style="background:#f8fafc;">
+      <td></td><td style="text-align:left;font-weight:700;">小計</td>
+      <td style="font-weight:700;">${g.qty}</td><td></td><td style="font-weight:700;">${yen(g.amount)}</td>
+    </tr>`).join('');
+  return `<div class="month-tbl-wrap" style="margin-bottom:20px;">
+    <table class="month-tbl">
+      <thead><tr><th style="text-align:left;">${firstColLabel}</th><th style="text-align:left;">内容</th><th>数量</th><th>単価</th><th>金額</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><td>合計</td><td></td><td>${totalQty}</td><td></td><td>${yen(total)}</td></tr></tfoot>
+    </table>
+  </div>`;
+}
+
+// 月次：1食1行の明細と、人×食事×サイズの集計（経理用）
+function getPersonalLedger(ym) {
+  const po = getPersonalOrders();
+  const SZ = { s:'半盛', r:'普通', l:'大盛' };
+  const lines = [];
+  getPersonalItemsForMonth(ym).forEach(i => {
+    const p = po[i.id] || {};
+    const cat = p.category === 'staff' ? '職員' : '利用者';
+    [['lunch','昼',i.serves_lunch,i.lunchSize],['dinner','夕',i.serves_dinner,i.dinnerSize]].forEach(([mk,ml,on,size]) => {
+      if (!on) return;
+      const item = p.mealType === 'sides' ? 'おかずのみ' : SZ[size||'r'];
+      lines.push({ date: i.date, id: i.id, name: i.name, cat, meal: ml, mealKey: mk, item, unit: personalUnitPrice(p, size) });
+    });
+  });
+  lines.sort((a,b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name,'ja') || (a.mealKey==='lunch'?-1:1));
+  const byPerson = {};
+  lines.forEach(l => {
+    const g = byPerson[l.id] || (byPerson[l.id] = { id: l.id, name: l.name, cat: l.cat, items: {}, qty: 0, amount: 0 });
+    const k = `${l.meal}・${l.item}・${l.unit}`;
+    const it = g.items[k] || (g.items[k] = { label: `${l.meal}・${l.item}`, unit: l.unit, qty: 0, mealKey: l.mealKey });
+    it.qty++; g.qty++; g.amount += l.unit;
+  });
+  const groups = Object.values(byPerson).sort((a,b) => a.name.localeCompare(b.name,'ja'))
+    .map(g => ({ ...g, items: Object.values(g.items).sort((a,b) => (a.mealKey===b.mealKey ? 0 : a.mealKey==='lunch' ? -1 : 1) || a.label.localeCompare(b.label,'ja')) }));
+  return { lines, groups };
+}
+
+// 月次：個人ごとの回数・金額
+function getPersonalMonthlyRows(ym) {
+  const po = getPersonalOrders();
+  const items = getPersonalItemsForMonth(ym);
+  const byId = {};
+  items.forEach(i => {
+    const p = po[i.id] || {};
+    const r = byId[i.id] || (byId[i.id] = { id: i.id, name: i.name, lunch: 0, dinner: 0, dates: [], amount: 0, prices: new Set() });
+    if (i.serves_lunch)  { const u = personalUnitPrice(p, i.lunchSize);  r.lunch++;  r.amount += u; r.prices.add(u); }
+    if (i.serves_dinner) { const u = personalUnitPrice(p, i.dinnerSize); r.dinner++; r.amount += u; r.prices.add(u); }
+    r.dates.push(i.date);
+  });
+  return Object.values(byId).map(r => {
+    const p = po[r.id] || {};
+    const ps = [...r.prices];
+    return { ...r, catLabel: p.category==='staff' ? '職員' : '利用者', typeLabel: p.mealType==='sides' ? 'おかずのみ' : '通常',
+      price: ps.length === 1 ? ps[0] : ps.join('/') };
+  }).sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+}
+
+function getPersonalOrdersForDate(dateStr) {
+  const po  = getPersonalOrders();
+  const dow = new Date(dateStr + 'T00:00:00').getDay();
+  const ym  = dateStr.substring(0, 7); // "yyyy-mm"
+  const schedules = getPersonalSchedules();
+  return Object.entries(po).filter(([id, p]) => {
+    const isSusp = (p.suspensions||[]).some(s => dateStr >= s.from && dateStr <= s.to);
+    if (isSusp) return false;
+    return isPersonalDateOn(p, schedules[id]?.[ym], dateStr);
+  }).map(([id, p]) => {
+    const sc = schedules[id]?.[ym];
+    return { id, ...p, serves_lunch: isPersonalDateOn(p, sc, dateStr, 'lunch'), serves_dinner: isPersonalDateOn(p, sc, dateStr, 'dinner') };
+  });
+}
+
+// 調理用画面：個人注文セクション
+function renderPersonalSection(dateStr) {
+  const el = document.getElementById('personal-orders-section');
+  if (!el) return;
+  const orders = getPersonalOrdersForDate(dateStr);
+  if (!orders.length) { el.innerHTML = ''; return; }
+  const pPrices = getPrices().personal || {};
+  const sizeLabel = { s:'半盛', r:'普通', l:'大盛', '':'—' };
+  const rows = orders.map(p => {
+    const catLabel  = p.category === 'staff' ? '職員' : '利用者';
+    const typeLabel = p.mealType === 'sides' ? 'おかずのみ' : '通常';
+    const lTxt = p.serves_lunch  ? (p.mealType==='sides' ? 'おかずのみ' : (sizeLabel[p.lunchSize]||'普通')) : '—';
+    const dTxt = p.serves_dinner ? (p.mealType==='sides' ? 'おかずのみ' : (sizeLabel[p.dinnerSize]||'—'))    : '—';
+    const prParts = [];
+    if (p.serves_lunch)  prParts.push(personalUnitPrice(p, p.lunchSize));
+    if (p.serves_dinner) prParts.push(personalUnitPrice(p, p.dinnerSize));
+    const price = prParts.filter(Boolean).map(v=>v.toLocaleString()).join(' / ');
+    return `<tr>
+      <td style="padding:8px 12px;font-size:14px;font-weight:600;">${esc(p.name)}</td>
+      <td style="padding:8px 10px;text-align:center;"><span style="font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;${p.category==='staff'?'background:#dbeafe;color:#1d4ed8':'background:#dcfce7;color:#15803d'}">${catLabel}</span></td>
+      <td style="padding:8px 10px;text-align:center;"><span style="font-size:11px;padding:2px 7px;border-radius:4px;background:#fef3c7;color:#92400e;font-weight:600;">${typeLabel}</span></td>
+      <td style="padding:8px 10px;text-align:center;font-size:13px;">${lTxt}</td>
+      <td style="padding:8px 10px;text-align:center;font-size:13px;">${dTxt}</td>
+      <td style="padding:8px 10px;text-align:center;font-size:13px;color:var(--muted);">${price ? '¥'+price : '—'}</td>
+      <td style="padding:6px 8px;text-align:center;">
+        <button onclick="cancelPersonalToday('${p.id}','${dateStr}')" style="font-size:11px;padding:3px 8px;border:1px solid #fca5a5;border-radius:5px;background:none;color:#dc2626;cursor:pointer;">✕ キャンセル</button>
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `
+    <div style="margin-top:20px;border:1.5px solid #bfdbfe;border-radius:12px;overflow:hidden;">
+      <div style="background:#1e40af;color:white;padding:10px 16px;font-weight:700;font-size:14px;">👤 個人注文（${orders.length}名）</div>
+      <div class="table-wrap" style="margin:0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#f8fafc;">
+            <th style="padding:8px 12px;font-size:12px;font-weight:700;color:var(--muted);text-align:left;border-bottom:2px solid var(--border);">名前</th>
+            <th style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-bottom:2px solid var(--border);">区分</th>
+            <th style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-bottom:2px solid var(--border);">種別</th>
+            <th style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-bottom:2px solid var(--border);">☀️ 昼食</th>
+            <th style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-bottom:2px solid var(--border);">🌙 夕食</th>
+            <th style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-bottom:2px solid var(--border);">単価</th>
+            <th style="padding:8px 10px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-bottom:2px solid var(--border);">操作</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// マスタ：個人注文管理
+function renderPersonalMaster() {
+  const el = document.getElementById('master-personal-area');
+  if (!el) return;
+  const po = getPersonalOrders();
+  const DJP = ['日','月','火','水','木','金','土'];
+  const entries = Object.entries(po);
+  const sOpts = ['s','r','l']; const sLbls = ['半盛','普通','大盛'];
+
+  const list = entries.map(([id, p]) => {
+    const catLbl  = p.category==='staff' ? '職員' : '利用者';
+    const typeLbl = p.mealType==='sides' ? 'おかずのみ' : '通常';
+    const schLbl  = p.scheduleType==='monthly' ? '月間指定' : '曜日固定';
+    const daysStr = p.scheduleType!=='monthly' ? (p.days||[1,2,3,4,5]).map(d=>DJP[d]).join('・') : '月ごとに指定';
+    const todaySusp = (p.suspensions||[]).find(s=>getTodayStr()>=s.from&&getTodayStr()<=s.to);
+    const suspBadge = todaySusp ? `<span style="font-size:11px;color:#dc2626;background:#fee2e2;padding:1px 6px;border-radius:5px;">🏥停止中</span>` : '';
+    const lunchRow = p.serves_lunch && p.mealType==='full' ? `
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+        <span style="font-size:12px;color:var(--muted);">☀️ 昼食</span>
+        <select onchange="updatePersonalOrder('${id}','lunchSize',this.value)" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;">
+          ${sOpts.map((v,i)=>`<option value="${v}" ${(p.lunchSize||'r')===v?'selected':''}>${sLbls[i]}</option>`).join('')}
+        </select>
+      </div>` : '';
+    const dinnerRow = p.serves_dinner && p.mealType==='full' ? `
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+        <span style="font-size:12px;color:var(--muted);">🌙 夕食</span>
+        <select onchange="updatePersonalOrder('${id}','dinnerSize',this.value)" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;">
+          ${sOpts.map((v,i)=>`<option value="${v}" ${(p.dinnerSize||'r')===v?'selected':''}>${sLbls[i]}</option>`).join('')}
+        </select>
+      </div>` : '';
+    const suspList = (p.suspensions||[]).map((s,idx)=>{
+      const lbl = s.to&&s.to!==s.from ? `${s.from}〜${s.to}` : s.from;
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-top:4px;">
+        <span style="color:var(--muted);">🏥 ${esc(s.reason||'')} ${lbl}</span>
+        <button onclick="removePersonalSusp('${id}',${idx})" style="font-size:11px;color:var(--danger);border:none;background:none;cursor:pointer;">✕</button>
+      </div>`;
+    }).join('');
+    return `
+    <details class="po-m" ${poMasterOpen.has(id)?'open':''} ontoggle="this.open ? poMasterOpen.add('${id}') : poMasterOpen.delete('${id}')" style="border:1.5px solid var(--border);border-radius:10px;padding:0 14px;margin-bottom:8px;">
+      <summary style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0;cursor:pointer;list-style:none;">
+        <span class="po-m-arr" style="font-size:12px;color:var(--muted);width:12px;"></span>
+        <span style="font-weight:700;font-size:15px;">${esc(p.name)}</span>
+        <span style="font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;${p.category==='staff'?'background:#dbeafe;color:#1d4ed8':'background:#dcfce7;color:#15803d'}">${catLbl}</span>
+        ${suspBadge}
+      </summary>
+      <div style="padding-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+        <span style="font-size:11px;padding:2px 7px;border-radius:4px;background:#fef3c7;color:#92400e;font-weight:600;">${typeLbl}</span>
+        <span style="font-size:11px;padding:2px 7px;border-radius:4px;background:#f1f5f9;color:var(--muted);font-weight:600;">${schLbl}</span>
+        <button onclick="deletePersonalOrder('${id}')" style="margin-left:auto;font-size:12px;padding:3px 10px;border:1px solid #fca5a5;border-radius:6px;background:none;color:var(--danger);cursor:pointer;">削除</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);">
+        <span>${daysStr}</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted);margin:0;">開始日
+          <input type="date" value="${poStartDate(p)}" onchange="if(this.value) updatePersonalOrder('${id}','startDate',this.value)" style="width:auto;font-size:12px;padding:3px 6px;">
+        </label>
+        <select onchange="updatePersonalMeals('${id}',this.value)" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;">
+          ${PO_MEAL_OPTS.map(([v,l])=>`<option value="${v}" ${poMealValue(p)===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      ${lunchRow}${dinnerRow}
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;">一時停止</div>
+        ${suspList}
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+          <select id="psr-${id}" style="font-size:12px;padding:3px 6px;border:1.5px solid var(--border);border-radius:6px;">
+            <option>外泊</option><option>外出</option><option>入院</option><option>その他</option>
+          </select>
+          <input type="date" id="psf-${id}" style="font-size:12px;padding:3px 6px;border:1.5px solid var(--border);border-radius:6px;">
+          <input type="date" id="pst-${id}" placeholder="終了日（省略可）" style="font-size:12px;padding:3px 6px;border:1.5px solid var(--border);border-radius:6px;">
+          <button onclick="addPersonalSusp('${id}')" style="font-size:12px;padding:3px 10px;border:1.5px solid var(--border);border-radius:6px;background:none;cursor:pointer;">登録</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">終了日を省略すると1日のみ停止</div>
+      </div>
+      </div>
+    </details>`;
+  }).join('');
+
+  // 新規追加フォーム
+  const DJP2 = ['日','月','火','水','木','金','土'];
+  const addForm = `
+    <div style="border:2px dashed var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--muted);">＋ 新しい個人注文を追加</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+        <input type="text" id="new-po-name" placeholder="名前" style="width:120px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;">
+        <select id="new-po-cat" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;">
+          <option value="user">利用者</option><option value="staff">職員</option>
+        </select>
+        <select id="new-po-type" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;">
+          <option value="full">通常弁当</option><option value="sides">おかずのみ</option>
+        </select>
+        <select id="new-po-sched" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;" onchange="toggleNewPoSchedUI()">
+          <option value="weekly">曜日固定</option><option value="monthly">月間指定</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted);margin:0;">開始日
+          <input type="date" id="new-po-start" value="${firstEditableDate()}" style="width:auto;padding:6px 8px;font-size:13px;">
+        </label>
+        <select id="new-po-meals" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;">
+          ${PO_MEAL_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+        </select>
+      </div>
+      <div id="new-po-days-row" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
+        ${DJP2.map((d,i)=>`<button class="day-chip ${i===0?'sun':i===6?'sat':''} ${i>0&&i<6?'active':''}" id="new-po-day-${i}" onclick="toggleNewPoDay(${i})">${d}</button>`).join('')}
+      </div>
+      <button class="btn btn-success btn-sm" onclick="addPersonalOrder()">＋ 追加する</button>
+    </div>`;
+
+  el.innerHTML = addForm + `<div style="font-size:13px;font-weight:700;color:var(--muted);margin:16px 0 8px;">登録済み（${entries.length}名）　名前を押すと詳細が開きます</div>`
+    + (entries.length ? list : `<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px;">登録なし</div>`);
+}
+const poMasterOpen = new Set();
+
+const PO_MEAL_OPTS = [['lunch','☀️ 昼のみ'],['dinner','🌙 夕のみ'],['both','☀️🌙 昼・夕']];
+function poMealValue(p) {
+  return p.serves_lunch && p.serves_dinner ? 'both' : p.serves_dinner ? 'dinner' : 'lunch';
+}
+function updatePersonalMeals(id, val) {
+  const po = JSON.parse(JSON.stringify(getPersonalOrders()));
+  if (!po[id]) return;
+  po[id].serves_lunch  = val !== 'dinner';
+  po[id].serves_dinner = val !== 'lunch';
+  if (po[id].serves_dinner && !po[id].dinnerSize) po[id].dinnerSize = 'r';
+  savePersonalOrders(po, id);
+  renderPersonalMaster(); renderPersonalScheduleForm(); renderAdmin();
+  toast(`${po[id].name}：${PO_MEAL_OPTS.find(o=>o[0]===val)[1]} に変更しました`, 'ok');
+}
+
+function toggleNewPoDay(i) {
+  document.getElementById(`new-po-day-${i}`)?.classList.toggle('active');
+}
+function toggleNewPoSchedUI() {
+  const isMonthly = document.getElementById('new-po-sched')?.value === 'monthly';
+  const daysRow = document.getElementById('new-po-days-row');
+  if (daysRow) daysRow.style.display = isMonthly ? 'none' : '';
+}
+
+function addPersonalOrder() {
+  const name = document.getElementById('new-po-name')?.value.trim();
+  if (!name) { toast('名前を入力してください','ng'); return; }
+  const category     = document.getElementById('new-po-cat')?.value  || 'user';
+  const mealType     = document.getElementById('new-po-type')?.value || 'full';
+  const scheduleType = document.getElementById('new-po-sched')?.value|| 'weekly';
+  const meals = document.getElementById('new-po-meals')?.value || 'lunch';
+  const serves_lunch  = meals !== 'dinner';
+  const serves_dinner = meals !== 'lunch';
+  const days = scheduleType==='weekly' ? [0,1,2,3,4,5,6].filter(i=>document.getElementById(`new-po-day-${i}`)?.classList.contains('active')) : [];
+  if (scheduleType==='weekly' && !days.length) { toast('曜日を1日以上選択してください','ng'); return; }
+  const po = getPersonalOrders();
+  const id = 'po_' + Date.now();
+  const startDate = document.getElementById('new-po-start')?.value || firstEditableDate();
+  po[id] = { name, category, mealType, scheduleType, days, serves_lunch, serves_dinner, startDate, lunchSize:'r', dinnerSize:'r', dinnerCount:1, suspensions:[], sizeHistory:[] };
+  savePersonalOrders(po, id);
+  renderPersonalMaster();
+  renderPersonalScheduleForm();
+  renderAdmin();
+  toast(`${name} を追加しました ✓`, 'ok');
+}
+
+function updatePersonalOrder(id, field, val) {
+  const po = JSON.parse(JSON.stringify(getPersonalOrders()));
+  if (!po[id]) return;
+  if (field==='lunchSize'||field==='dinnerSize') {
+    const today = getTodayStr();
+    if (!po[id].sizeHistory) po[id].sizeHistory=[];
+    // 初回変更時は、変更前のサイズを過去分として残す
+    if (!po[id].sizeHistory.length) po[id].sizeHistory.push({ lunchSize:po[id].lunchSize||'r', dinnerSize:po[id].dinnerSize||'r', from:'0000-00-00' });
+    po[id].sizeHistory = po[id].sizeHistory.filter(e=>e.from!==today);
+    po[id][field] = val;
+    po[id].sizeHistory.push({ lunchSize:po[id].lunchSize||'r', dinnerSize:po[id].dinnerSize||'r', from:today });
+  } else { po[id][field]=val; }
+  savePersonalOrders(po, id);
+  renderAdmin();
+}
+
+function deletePersonalOrder(id) {
+  const po = getPersonalOrders();
+  if (!po[id]) return;
+  if (!confirm(`「${po[id].name}」の個人注文を削除しますか？`)) return;
+  const newPo = { ...po }; delete newPo[id];
+  savePersonalOrders(newPo, id);
+  renderPersonalMaster(); renderPersonalScheduleForm(); renderAdmin();
+  toast(`削除しました`, 'ok');
+}
+
+function addPersonalSusp(id) {
+  const from = document.getElementById(`psf-${id}`)?.value;
+  if (!from) { toast('日付を入力してください','ng'); return; }
+  const to     = document.getElementById(`pst-${id}`)?.value || from;
+  const reason = document.getElementById(`psr-${id}`)?.value || 'その他';
+  const po = JSON.parse(JSON.stringify(getPersonalOrders()));
+  if (!po[id]) return;
+  if (!po[id].suspensions) po[id].suspensions=[];
+  po[id].suspensions.push({ from, to, reason });
+  savePersonalOrders(po, id);
+  renderPersonalMaster(); renderAdmin();
+  toast('一時停止を登録しました ✓','ok');
+}
+
+function removePersonalSusp(id, idx) {
+  const po = JSON.parse(JSON.stringify(getPersonalOrders()));
+  if (!po[id]?.suspensions) return;
+  po[id].suspensions.splice(idx,1);
+  savePersonalOrders(po, id);
+  renderPersonalMaster(); renderAdmin();
+  toast('一時停止を解除しました','ok');
+}
+
+// 未提出一覧（管理画面）
+function renderPersonalPendingList() {
+  const el = document.getElementById('personal-pending-list');
+  if (!el) return;
+  const po = getPersonalOrders();
+  const schedules = getPersonalSchedules();
+  const monthlyPeople = Object.entries(po).filter(([,p])=>p.scheduleType==='monthly');
+  if (!monthlyPeople.length) { el.innerHTML=''; return; }
+  // 翌月のyyyymm
+  const now = new Date();
+  const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1);
+  const ym = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth()+1).padStart(2,'0')}`;
+  const ymLabel = `${nextMonth.getFullYear()}年${nextMonth.getMonth()+1}月`;
+  const pending = monthlyPeople.filter(([id, p])=>!isPoSubmitted(p, schedules[id]?.[ym]));
+  if (!pending.length) { el.innerHTML=`<div style="font-size:13px;color:#16a34a;padding:8px 0;">✅ ${ymLabel}分：全員提出済み</div>`; return; }
+  el.innerHTML=`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;">
+    ⚠️ <strong>${ymLabel}分　未提出：</strong>${pending.map(([,p])=>esc(p.name)).join('、')}
+  </div>`;
+}
+
+// 価格設定の個人注文部分（saveMasterで保存）
+const PO_PRICE_COLS = [['full_s','半盛'],['full_r','普通'],['full_l','大盛'],['sides','おかずのみ']];
+// サイズ別が未設定なら旧「通常」単価を使う
+function poPriceStored(pp, c, suf) {
+  const v = pp[`${c}_${suf}`];
+  if (v !== undefined) return v;
+  return suf.startsWith('full_') ? (pp[`${c}_full`] || 0) : 0;
+}
+function personalUnitPrice(p, size) {
+  const pp = getPrices().personal || {};
+  const c = p.category === 'staff' ? 'staff' : 'user';
+  return poPriceStored(pp, c, p.mealType === 'sides' ? 'sides' : `full_${size || 'r'}`);
+}
+
+// 個人注文タブ：1人1行の折りたたみ＋カレンダー
+let poViewMonthOffset = 1; // 0=今月, 1=来月
+const poOpen = new Set();
+function setPoView(key, val) {
+  if (key === 'month') poViewMonthOffset = val;
+  renderPersonalScheduleForm();
+}
+function togglePoOpen(id) {
+  if (poOpen.has(id)) poOpen.delete(id); else poOpen.add(id);
+  renderPersonalScheduleForm();
+}
+const PO_MEALS = [['lunch','☀️ 昼食'],['dinner','🌙 夕食']];
+// 昼・夕それぞれの予定（旧データは昼夕共通の値を使う）
+function mealSc(sc, meal) { return sc?.[meal] || sc; }
+function pickMs(ms) { return { dates: [...(ms?.dates||[])], plan: ms?.plan ? [...ms.plan] : undefined, cancelledDates: [...(ms?.cancelledDates||[])], addedDates: [...(ms?.addedDates||[])] }; }
+// 月間指定は「提出済み」か（旧データは日付が入っていれば提出済み扱い）
+function isPoSubmitted(p, sc) {
+  if (p.scheduleType !== 'monthly') return true;
+  if (!sc) return false;
+  if (sc.submitted !== undefined) return sc.submitted === true;
+  return PO_MEALS.some(([m]) => (mealSc(sc, m)?.dates || []).length > 0);
+}
+// 開始日（未設定の旧データは登録した日 = IDの時刻）
+function poStartDate(p) {
+  if (p.startDate) return p.startDate;
+  const id = Object.keys(getPersonalOrders()).find(k => getPersonalOrders()[k] === p) || '';
+  const ts = parseInt((id.match(/^po_(\d{13})$/) || [])[1]);
+  return ts ? toDateStr(new Date(ts)) : '';
+}
+// その日のその食事を注文しているか（meal省略時は昼夕どちらか）
+function isPersonalDateOn(p, sc, dateStr, meal) {
+  if (!meal) return PO_MEALS.some(([m]) => isPersonalDateOn(p, sc, dateStr, m));
+  if (!p[`serves_${meal}`]) return false;
+  const start = poStartDate(p);
+  if (start && dateStr < start) return false;
+  const ms = mealSc(sc, meal);
+  if ((ms?.cancelledDates||[]).includes(dateStr)) return false;
+  if (p.scheduleType === 'monthly') return (ms?.dates||[]).includes(dateStr);
+  const dow = new Date(dateStr+'T00:00:00').getDay();
+  return (p.days||[1,2,3,4,5]).includes(dow) || (ms?.addedDates||[]).includes(dateStr);
+}
+// 提出した予定に入っていた日か（提出前は null）
+function isPersonalDatePlanned(p, sc, dateStr, meal) {
+  const start = poStartDate(p);
+  if (p.scheduleType === 'monthly') {
+    if (!isPoSubmitted(p, sc)) return null;
+    const ms = mealSc(sc, meal);
+    return (ms?.plan || ms?.dates || []).includes(dateStr) || ((ms?.cancelledDates||[]).includes(dateStr) && !ms?.plan);
+  }
+  if (start && dateStr < start) return false;
+  return (p.days||[1,2,3,4,5]).includes(new Date(dateStr+'T00:00:00').getDay());
+}
+
+function submitPersonalPlan(id, ym) {
+  const p = getPersonalOrders()[id]; if (!p) return;
+  const sc = getPersonalSchedules()[id]?.[ym] || {};
+  const data = { ...sc, submitted: true, submittedAt: new Date().toLocaleString('ja-JP') };
+  let total = 0;
+  PO_MEALS.forEach(([m]) => {
+    if (!p[`serves_${m}`]) return;
+    const ms = pickMs(mealSc(sc, m));
+    ms.dates.sort(); ms.plan = [...ms.dates]; total += ms.dates.length;
+    data[m] = ms;
+  });
+  if (!total && !confirm(`${p.name}：注文する日が0日です。このまま提出しますか？`)) return;
+  savePersonalSchedule(id, ym, data);
+  toast(`${p.name}：${parseInt(ym.slice(5))}月の予定を提出しました ✓`, 'ok');
+  renderPersonalScheduleForm(); renderPersonalPendingList(); renderAdmin();
+}
+
+function renderPersonalScheduleForm() {
+  const po = getPersonalOrders();
+  const people = Object.entries(po).sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'','ja'));
+  const banner = document.getElementById('personal-schedule-deadline-banner');
+  const formEl = document.getElementById('personal-schedule-form');
+  if (!banner||!formEl) return;
+
+  const dl = getPersonalDeadline();
+  const now = new Date();
+  const targetMonth = new Date(now.getFullYear(), now.getMonth()+poViewMonthOffset, 1);
+  const year = targetMonth.getFullYear(), month = targetMonth.getMonth();
+  const ym = `${year}-${String(month+1).padStart(2,'0')}`;
+  const daysLeft = dl.day - now.getDate();
+
+  const tabBtn = (off, lbl) => `<button onclick="setPoView('month',${off})" style="padding:8px 16px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;border:1.5px solid ${poViewMonthOffset===off?'#1d4ed8':'var(--border)'};background:${poViewMonthOffset===off?'#1d4ed8':'white'};color:${poViewMonthOffset===off?'white':'var(--text)'};">${lbl}</button>`;
+  const nextM = new Date(now.getFullYear(), now.getMonth()+1, 1).getMonth()+1;
+  const deadlineNote = poViewMonthOffset === 1
+    ? `<span style="font-size:13px;font-weight:700;color:${daysLeft<0?'#dc2626':daysLeft<=5?'#d97706':'#16a34a'};">📅 ${nextM}月分の提出締め切り：${now.getMonth()+1}月${dl.day}日${daysLeft>=0?`（あと${daysLeft}日）`:'（過ぎています）'}</span>` : '';
+  banner.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+      ${tabBtn(0, `今月（${now.getMonth()+1}月）`)}${tabBtn(1, `来月（${nextM}月）`)}
+      <span style="margin-left:auto;">${deadlineNote}</span>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:12px;align-items:center;">
+      <span>名前を押すとカレンダーが開きます。日付を押して切り替え（当日9:00以降・過去は変更不可）</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#1d4ed8;border-radius:3px;vertical-align:-1px;"></span> 予定</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#16a34a;border-radius:3px;vertical-align:-1px;"></span> 追加</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#fee2e2;border:1.5px solid #dc2626;border-radius:3px;vertical-align:-1px;"></span> キャンセル</span>
+    </div>`;
+
+  if (!people.length) {
+    formEl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">個人注文の登録者がいません。管理画面 → マスタ → 個人注文から登録できます。</div>`;
+    return;
+  }
+
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay();
+  const DJP3 = ['日','月','火','水','木','金','土'];
+  const schedules = getPersonalSchedules();
+
+  formEl.innerHTML = people.map(([id, p]) => {
+    const sc = schedules[id]?.[ym];
+    const submitted = isPoSubmitted(p, sc);
+    const meals = PO_MEALS.filter(([m]) => p[`serves_${m}`]);
+    const counts = {};
+    const cals = meals.map(([meal, mealLbl]) => {
+      const c = counts[meal] = { on: 0, add: 0, cancel: 0 };
+      let cal = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:360px;">`;
+      DJP3.forEach((d,i) => { cal += `<div style="font-size:11px;text-align:center;color:${i===0?'#dc2626':i===6?'#1d4ed8':'var(--muted)'};font-weight:700;padding:3px 0;">${d}</div>`; });
+      for (let i=0;i<firstDow;i++) cal += `<div></div>`;
+      for (let day=1; day<=daysInMonth; day++) {
+        const ds = `${ym}-${String(day).padStart(2,'0')}`;
+        const on = isPersonalDateOn(p, sc, ds, meal);
+        const planned = isPersonalDatePlanned(p, sc, ds, meal);
+        const locked = isPersonalDateLocked(ds);
+        const isAdd = planned === false && on, isCancel = planned === true && !on;
+        if (on) c.on++; if (isAdd) c.add++; if (isCancel) c.cancel++;
+        let bg = '#f8fafc', fg = 'var(--text)', bd = 'var(--border)', label = `${day}`, fw = 400;
+        if (on && !isAdd) { bg = '#1d4ed8'; fg = 'white'; bd = '#1d4ed8'; fw = 700; }
+        if (isAdd)        { bg = '#16a34a'; fg = 'white'; bd = '#16a34a'; fw = 700; label = `${day}<span style="display:block;font-size:9px;">追加</span>`; }
+        if (isCancel)     { bg = '#fee2e2'; fg = '#dc2626'; bd = '#dc2626'; fw = 700; label = `<s>${day}</s><span style="display:block;font-size:9px;">ｷｬﾝｾﾙ</span>`; }
+        const op = locked ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;';
+        cal += `<button onclick="togglePersonalDate('${id}','${ym}','${ds}','${meal}')" style="background:${bg};color:${fg};border:1.5px solid ${bd};font-weight:${fw};border-radius:6px;padding:6px 2px;min-height:40px;font-size:13px;line-height:1.1;font-family:inherit;width:100%;${op}">${label}</button>`;
+      }
+      cal += `</div>`;
+      return `<div style="flex:1;min-width:260px;max-width:380px;">
+        <div style="font-size:14px;font-weight:800;margin-bottom:6px;color:${meal==='lunch'?'#92400e':'#4c1d95'};">${mealLbl}　<span style="font-size:12px;font-weight:600;color:var(--muted);">${c.on}日</span></div>
+        ${cal}
+      </div>`;
+    }).join('');
+
+    const catLbl  = p.category==='staff'?'職員':'利用者';
+    const typeLbl = p.mealType==='sides'?'おかずのみ':'通常';
+    const schLbl  = p.scheduleType==='monthly' ? '月間指定' : `曜日固定（${(p.days||[1,2,3,4,5]).map(d=>DJP3[d]).join('・')}）`;
+    const mealTxt = meals.map(([,l])=>l.replace('食','')).join('・');
+    const sumTxt  = meals.map(([m,l]) => {
+      const c = counts[m];
+      return `${l.slice(0,2)}${c.on}${c.add?`<b style="color:#16a34a;">+${c.add}</b>`:''}${c.cancel?`<b style="color:#dc2626;">−${c.cancel}</b>`:''}`;
+    }).join('　');
+    const status  = !submitted
+      ? `<span style="font-size:12px;font-weight:700;color:#d97706;background:#fef3c7;padding:2px 8px;border-radius:5px;">未提出</span>`
+      : `<span style="font-size:12px;color:var(--muted);">${sumTxt}</span>`;
+    const open = poOpen.has(id);
+    const submitBtn = (!submitted)
+      ? `<button class="btn btn-success btn-sm" style="margin-top:12px;" onclick="submitPersonalPlan('${id}','${ym}')">📨 この予定で提出する</button>`
+      : (p.scheduleType==='monthly' && sc?.submittedAt ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;">提出・最終更新：${esc(sc.submittedAt)}</div>` : '');
+    const guide = !submitted
+      ? '注文する日を押して選び、最後に「提出する」を押してください。'
+      : '提出済みです。日付を押すと、予定の日はキャンセル、予定外の日は追加になります。';
+    return `<div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;background:white;">
+      <button onclick="togglePoOpen('${id}')" style="width:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border:none;background:none;cursor:pointer;font-family:inherit;text-align:left;">
+        <span style="font-size:12px;color:var(--muted);width:12px;">${open?'▼':'▶'}</span>
+        <span style="font-weight:700;font-size:15px;color:var(--text);">${esc(p.name)}</span>
+        <span style="font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;${p.category==='staff'?'background:#dbeafe;color:#1d4ed8':'background:#dcfce7;color:#15803d'}">${catLbl}</span>
+        <span style="font-size:11px;color:var(--muted);">${typeLbl}・${mealTxt}</span>
+        <span style="margin-left:auto;">${status}</span>
+      </button>
+      ${open ? `<div style="padding:0 14px 14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${schLbl}　${guide}</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">${cals}</div>
+        ${submitBtn}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// Slack通知（GASプロキシ経由）
+function notifySlack(text) {
+  const url = getGasUrl();
+  if (!url) return; // 未設定なら何もしない
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  }).catch(() => {}); // エラーは黙って無視（通知失敗で業務を止めない）
+}
+
+// 管理者が調理画面から当日の個人注文をキャンセル
+function cancelPersonalToday(id, dateStr) {
+  const po = getPersonalOrders();
+  const name = po[id]?.name || '不明';
+  if (!confirm(`${name} の ${dateStr} 分をキャンセルしますか？\n（当日キャンセル：月間スケジュールからこの日を除外します）`)) return;
+  const ym = dateStr.substring(0, 7);
+  const schedules = getPersonalSchedules();
+  const prev = schedules[id]?.[ym] || {};
+  const p = po[id] || {};
+  const isRegular = p.scheduleType === 'monthly' || (p.days||[1,2,3,4,5]).includes(new Date(dateStr+'T00:00:00').getDay());
+  const data = { ...prev, submittedAt: new Date().toLocaleString('ja-JP') };
+  PO_MEALS.forEach(([m]) => {
+    if (!isPersonalDateOn(p, prev, dateStr, m)) return;
+    const ms = pickMs(mealSc(prev, m));
+    ms.dates = ms.dates.filter(d => d !== dateStr);
+    ms.addedDates = ms.addedDates.filter(d => d !== dateStr);
+    if (isRegular && !ms.cancelledDates.includes(dateStr)) ms.cancelledDates.push(dateStr);
+    if (ms.plan === undefined) delete ms.plan;
+    data[m] = ms;
+    logPersonalOrderChange(name, dateStr, 'cancel', m);
+  });
+  savePersonalSchedule(id, ym, data);
+  notifySlack(`🍱 【当日キャンセル】${name} の ${dateStr} 分の弁当がキャンセルされました`);
+  renderAdmin();
+  toast(`${name}（${dateStr}）をキャンセルしました`, 'ok');
+}
+
+const LOCK_MSG = '🔒 当日9:00以降・過去の日は変更できません。当日の変更はお電話でご連絡ください。';
+// ロックされている最後の日（9時前なら昨日、9時以降なら今日）
+function lastLockedDate() {
+  const d = new Date();
+  if (d.getHours() < 9) d.setDate(d.getDate() - 1);
+  return toDateStr(d);
+}
+function firstEditableDate() {
+  const d = new Date(lastLockedDate() + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  return toDateStr(d);
+}
+// 一時停止・休止の削除：ロック済みの日は残し、未来分だけ取り消す
+function trimSuspension(list, idx) {
+  const s = list[idx];
+  const locked = lastLockedDate();
+  if (s.to <= locked) { toast(LOCK_MSG, 'ng'); return false; }
+  if (s.from <= locked) { list[idx] = { ...s, to: locked }; }
+  else list.splice(idx, 1);
+  return true;
+}
+
+function isPersonalDateLocked(dateStr) {
+  const today = getTodayStr();
+  if (dateStr < today) return true; // 過去
+  if (dateStr === today) {
+    const now = new Date();
+    return now.getHours() >= 9; // 当日9:00以降
+  }
+  return false;
+}
+
+function togglePersonalDate(id, ym, dateStr, meal = 'lunch') {
+  if (isPersonalDateLocked(dateStr)) {
+    toast(LOCK_MSG, 'ng');
+    return;
+  }
+  const schedules = getPersonalSchedules();
+  const p = getPersonalOrders()[id] || {};
+  const start = poStartDate(p);
+  if (start && dateStr < start) { toast(`開始日（${fmtDate(start)}）より前の日は選べません`, 'ng'); return; }
+  const prev = schedules[id]?.[ym] || {};
+  const ms = pickMs(mealSc(prev, meal));
+  const wasOn = isPersonalDateOn(p, prev, dateStr, meal);
+  const submitted = isPoSubmitted(p, prev);
+  const without = (arr) => arr.filter(d => d !== dateStr);
+  if (p.scheduleType === 'monthly') {
+    if (wasOn) ms.dates = without(ms.dates); else ms.dates.push(dateStr);
+    ms.cancelledDates = without(ms.cancelledDates);
+  } else {
+    const isRegular = (p.days||[1,2,3,4,5]).includes(new Date(dateStr+'T00:00:00').getDay());
+    if (wasOn) { if (isRegular) ms.cancelledDates.push(dateStr); else ms.addedDates = without(ms.addedDates); }
+    else       { if (isRegular) ms.cancelledDates = without(ms.cancelledDates); else ms.addedDates.push(dateStr); }
+  }
+  ms.dates.sort(); ms.cancelledDates.sort(); ms.addedDates.sort();
+  if (ms.plan === undefined) delete ms.plan;
+  const data = { ...prev, [meal]: ms, submittedAt: new Date().toLocaleString('ja-JP') };
+  savePersonalSchedule(id, ym, data);
+  // 提出後の変更だけ履歴に残す（提出前の予定づくりは記録しない）
+  if (submitted) {
+    const planned = isPersonalDatePlanned(p, data, dateStr, meal);
+    const action = wasOn ? (planned ? 'cancel' : 'remove') : (planned ? 'restore' : 'add');
+    logPersonalOrderChange(p.name || id, dateStr, action, meal);
+  }
+  renderPersonalScheduleForm();
+  renderAdmin();
 }
 
 // ── Toast ─────────────────────────────────────────────────
