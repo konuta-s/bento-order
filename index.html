@@ -1766,7 +1766,7 @@ function removeFacility(idx) {
 }
 
 function printAdmin() {
-  document.getElementById('print-date-lbl').textContent = fmtDate(adminDay);
+  document.getElementById('print-date-lbl').textContent = fmtDate(toDateStr(adminDay));
   window.print();
 }
 
@@ -2135,7 +2135,7 @@ function shiftDay(d) {
 function renderAdmin() {
   const input=document.getElementById('admin-date-input').value;
   if (input) adminDay=new Date(input+'T00:00:00');
-  document.getElementById('admin-date-lbl').textContent=fmtDate(adminDay);
+  document.getElementById('admin-date-lbl').textContent=fmtDate(toDateStr(adminDay));
 
   const date=toDateStr(adminDay), dow=adminDay.getDay();
   const dayData=getOrders()[date]||{}, tmpls=getTemplates();
