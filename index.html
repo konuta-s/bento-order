@@ -332,6 +332,7 @@
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.ok { background: var(--success); }
     .toast.ng { background: var(--danger); }
+    .toast.warn { background: #d97706; }
 
     /* ── PIN OVERLAY ── */
     .pin-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.85); z-index: 500; display: none; align-items: center; justify-content: center; }
@@ -472,7 +473,7 @@
   <div class="nav-inner">
     <div class="nav-brand">🍱 お弁当注文システム</div>
     <button class="nav-btn active"  onclick="showPage('order',   this)">注文フォーム</button>
-    <button class="nav-btn"         onclick="showPage('setting', this)">定期注文フォーム</button>
+    <button class="nav-btn"         onclick="showPage('setting', this)" style="line-height:1.4;">定期注文フォーム<br><span style="font-size:10px;font-weight:400;opacity:0.8;">（GHの注文はこちら）</span></button>
     <button class="nav-btn"         onclick="showPage('menu',    this)">献立</button>
     <button class="nav-btn"         onclick="showPage('guide',   this)">取説</button>
     <button class="nav-btn"         onclick="requirePin(this)">管理画面</button>
@@ -491,6 +492,7 @@
           <select id="f-facility" onchange="onFacilityChange()">
             <option value="">-- 選択してください --</option>
           </select>
+          <div style="font-size:11px;color:#64748b;margin-top:5px;">グループホームなど定期メンバー管理の事業所は <span style="font-weight:600;color:#2563eb;cursor:pointer;" onclick="goToMaster()">管理画面 → マスタ</span> からどうぞ</div>
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>注文日</label>
@@ -501,11 +503,18 @@
       <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1d4ed8;font-weight:600;margin-bottom:12px;">
         🕘 当日朝9時までにご注文ください。訂正が必要な場合はサヴァにご連絡ください。
       </div>
-      <div class="notice" id="repeat-notice">
+      <div class="notice" id="repeat-notice" style="display:none;">
         📋 この事業所は定期注文が設定されています。変更時は以降の注文に反映するか確認します。
       </div>
       <div class="notice" id="submitted-notice" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;display:none;">
         🔒 この事業所・日付はすでに注文済みです。再入力はできません。<br>訂正は、サヴァに電話連絡願います。
+      </div>
+
+      <!-- メンバー別注文エリア（定期施設かつメンバー登録済みの場合に表示） -->
+      <div id="member-order-area" style="display:none;margin-bottom:16px;">
+        <div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:8px;">👥 メンバー別注文　<span id="mor-summary" style="font-size:13px;font-weight:500;color:#64748b;"></span></div>
+        <div id="member-order-rows" style="border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;background:white;"></div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:6px;">※ 一時停止・退所のメンバーは自動で除外されます。サイズ変更・キャンセルはその日だけ反映されます。</div>
       </div>
 
       <!-- イレギュラー対応 -->
@@ -624,7 +633,7 @@
   <div id="page-admin" class="page">
     <!-- サブタブバー -->
     <div class="h-tabs" style="margin-bottom:0;border-radius:12px 12px 0 0;">
-      <button class="h-tab active" id="admin-sub-btn-admin"   onclick="showAdminSub('admin')">🏢 管理</button>
+      <button class="h-tab active" id="admin-sub-btn-admin"   onclick="showAdminSub('admin')">🍱 調理用</button>
       <button class="h-tab"        id="admin-sub-btn-history" onclick="showAdminSub('history')">📋 履歴</button>
       <button class="h-tab"        id="admin-sub-btn-master"  onclick="showAdminSub('master')">⚙️ マスタ</button>
       <button class="h-tab"        id="admin-sub-btn-manual"  onclick="showAdminSub('manual')">📖 トリセツ</button>
@@ -813,6 +822,77 @@
         </details>
 
       </div>
+
+      <div style="margin-top:28px;">
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;">🧾 経理・集計担当むけ</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">月次集計・印刷・メンバー別確認の操作案内です。</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📊 月ごとの合計数を集計したい</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              <ol style="padding-left:18px;margin:0;">
+                <li>「管理画面」→「履歴」タブを開く</li>
+                <li>上部の「📅 月次出力」タブを選ぶ</li>
+                <li>集計月を選んで「集計する」を押す</li>
+              </ol>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">事業所ごとの昼食・夕食の合計（半盛・普通・大盛別）が一覧で表示されます。</div>
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">👤 メンバー別の注文を確認・印刷したい</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              <ol style="padding-left:18px;margin:0;">
+                <li>「管理画面」→「調理用」タブを開く</li>
+                <li>日付を指定する（デフォルトは今日）</li>
+                <li>GHなどメンバー管理施設のメンバー別の注文が一覧で表示される</li>
+                <li>「🖨️ 印刷」ボタンで調理用シートとして印刷できる</li>
+              </ol>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">一時停止中・退所済みのメンバーは自動で除外されます。</div>
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🖨️ 注文一覧を印刷したい</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              <strong>調理用シート（当日の全事業所一覧）</strong>
+              <ol style="padding-left:18px;margin:4px 0 10px;">
+                <li>「管理画面」→「調理用」タブを開く</li>
+                <li>右上の「🖨️ 印刷」を押す（A4横）</li>
+              </ol>
+              <strong>履歴一覧（期間指定）</strong>
+              <ol style="padding-left:18px;margin:4px 0 0;">
+                <li>「管理画面」→「履歴」→「注文一覧」タブ</li>
+                <li>日付範囲を指定して表示後「🖨 印刷」を押す</li>
+              </ol>
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📈 利用傾向・統計を見たい</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              <ol style="padding-left:18px;margin:0;">
+                <li>「管理画面」→「履歴」タブを開く</li>
+                <li>「📊 統計・分析」タブを選ぶ</li>
+                <li>集計月を選んで「集計する」を押す</li>
+              </ol>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">事業所別・曜日別の傾向が確認できます。</div>
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">💡 数字の見方（半盛・普通・大盛）</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              調理用シートや集計表では「<strong>半盛（S）/ 普通（R）/ 大盛（L）</strong>」の3区分で表示されます。<br>
+              夕食は「×1」「×2」など食数込みで集計されます。<br>
+              <div style="margin-top:8px;background:#fef3c7;border-radius:7px;padding:8px 12px;font-size:12px;">⚠️ グループホームなどメンバー管理施設の数字は、テンプレートから自動計算されます。一時停止・退所が反映された数字が表示されます。</div>
+            </div>
+          </details>
+
+        </div>
+      </div>
+
     </div><!-- /admin-sub-manual -->
 
   </div><!-- /page-admin -->
@@ -824,8 +904,7 @@
       <div class="setting-intro">
         📋 <strong id="repeat-fac-names"></strong> は変更がない限り毎日同じ数量が自動で反映されます。<br>
         ・<strong>注文曜日</strong>を設定すると、その曜日のみ管理画面に自動反映されます。<br>
-        ・1日だけ数量が変わる場合は<strong>注文フォームから送信</strong>してください（「この日だけ変更」を選択）。<br>
-        　管理画面では定期テンプレートより当日入力が優先されます。
+        ・GHなどメンバー管理の事業所はメンバーの追加・変更・一時停止もここから行えます。
       </div>
       <div class="setting-grid" id="setting-grid"></div>
     </div>
@@ -844,30 +923,31 @@
 
       <!-- 注文フォーム -->
       <div id="guide-order">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">毎朝9時までに事業所の注文を送信します。定期注文が入っている日でも、<strong>送り直すとその日だけ</strong>上書きできます。</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7;">毎朝9時までに事業所の注文を送信します。<strong>グループホームなどメンバー管理している定期施設は注文フォームに出ません</strong>。調理用画面で管理します。</p>
 
-        <div style="margin-bottom:16px;">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">① 事業所を選んで数を確認する</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">注文フォームを開き、事業所名のタブを選びます。定期注文が入っている日は数が自動で入っています。</div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">① 事業所を選んで内容を確認する</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">定期注文の日はサイズや人数が自動で入っています。そのまま送れば定期注文通りです。</div>
         </div>
-        <div style="margin-bottom:16px;">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">② 必要なら数を変えて「注文を確定する」</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">人数が変わった日だけ数を書き換えます。そのまま送れば定期注文通りになります。</div>
-        </div>
-        <div style="margin-bottom:20px;">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">③ 注文を取り消したいとき</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">全ての数を「0」にして「注文を確定する」を押してください。または担当者にSlackか電話で連絡してください。</div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">② 変更が必要な場合のみ修正して「注文を確定する」</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;background:#f8fafc;padding:10px 14px;border-radius:8px;">人数やサイズが変わる日だけ書き換えて送信します。</div>
         </div>
 
-        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:10px;padding:14px 18px;">
+        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:10px;padding:14px 18px;margin-bottom:14px;">
           <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:4px;">⏰ 締め切り：当日朝9時まで</div>
-          <div style="font-size:13px;color:#78350f;">間違えた場合は担当者にお電話またはSlackで連絡してください。</div>
+          <div style="font-size:13px;color:#78350f;">9時以降の変更はサヴァへお電話ください。</div>
+        </div>
+
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;">
+          <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px;">🏠 グループホーム・メンバー管理施設の変更は調理用画面から</div>
+          <div style="font-size:13px;color:#166534;line-height:1.7;">テンプレートで基本の注文が自動反映されます。当日の変更は「調理用」タブを開いて該当メンバーの「キャンセル」ボタンを押してください（9時以前のみ操作可）。</div>
         </div>
       </div>
 
       <!-- 定期注文フォーム -->
       <div id="guide-setting" style="display:none;">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">毎週の定期注文の設定を修正するページです。変更すると<strong>翌週以降ずっと新しい内容が反映</strong>されます。</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">定期注文の設定ページです。変更は<strong>「適用開始日」に指定した日付から反映</strong>されます。過去のデータには影響しません。</p>
 
         <!-- デモアニメ -->
         <div style="max-width:300px;margin:0 auto 24px;position:relative;">
@@ -877,6 +957,29 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:10px;">
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🏥 外泊・外出・入院で一時的に止めるとき</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              <ol style="padding-left:18px;margin:0;">
+                <li>「定期注文フォーム」を開く</li>
+                <li>該当メンバーの「変更▼」を押す</li>
+                <li>理由（外泊・外出・入院・その他）と日付を入力して「＋」を押す</li>
+              </ol>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">停止期間中はその方の分が注文数から外れます。解除は一覧の「✕」から。</div>
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🍱 サイズ・食数を変えるとき</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              <ol style="padding-left:18px;margin:0;">
+                <li>「定期注文フォーム」を開く</li>
+                <li>該当メンバーの「変更▼」を押す</li>
+                <li>昼食・夕食のサイズと食数を変更する（即時保存）</li>
+              </ol>
+            </div>
+          </details>
 
           <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
             <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🆕 新しいメンバーが入ったとき</summary>
@@ -904,25 +1007,14 @@
           </details>
 
           <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🏥 外泊・外出・入院で一時的に止めるとき</summary>
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🍽️ 昼食・夕食の受け取り設定を変えるとき</summary>
             <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
               <ol style="padding-left:18px;margin:0;">
                 <li>「定期注文フォーム」を開く</li>
-                <li>該当メンバーの「変更▼」を押す</li>
-                <li>理由（外泊・外出・入院・その他）と期間を入力して「登録する」</li>
+                <li>事業所カード下部の「☀️ 昼食あり」「🌙 夕食あり」チェックを設定する</li>
+                <li>「更新する」を押して保存</li>
               </ol>
-              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">停止期間中はその方の分が注文数から外れます。解除は一覧の「✕」から。</div>
-            </div>
-          </details>
-
-          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">🍱 サイズ・食数を変えるとき</summary>
-            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
-              <ol style="padding-left:18px;margin:0;">
-                <li>「定期注文フォーム」を開く</li>
-                <li>該当メンバーの「変更▼」を押す</li>
-                <li>昼食・夕食のサイズと食数を変更する（即時保存）</li>
-              </ol>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">例：グループホームは昼食を受けないので「☀️ 昼食あり」のチェックを外す。</div>
             </div>
           </details>
 
@@ -932,9 +1024,23 @@
               <ol style="padding-left:18px;margin:0;">
                 <li>「定期注文フォーム」を開く</li>
                 <li>事業所カードの曜日チップをタップして選び直す</li>
+                <li>「適用開始日」を確認・変更する（デフォルトは今日）</li>
                 <li>「更新する」を押して保存</li>
               </ol>
               <div style="margin-top:8px;background:#fef3c7;border-radius:7px;padding:8px 12px;font-size:12px;">⚠️ 曜日の変更は「更新する」を押すまで保存されません。</div>
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <summary style="padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface);">📆 適用開始日とは</summary>
+            <div style="padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);">
+              <p>定期注文フォームで曜日・数量・昼夕設定を変更するとき、<strong>「適用開始日」から新しい内容が反映</strong>されます。</p>
+              <ul style="padding-left:18px;margin:8px 0;">
+                <li>デフォルトは今日の日付</li>
+                <li>適用開始日より前のデータは変わりません</li>
+                <li>将来の日付を指定すればその日から切り替わります</li>
+              </ul>
+              <div style="margin-top:8px;background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;">例：11/15から夕食なしに変更したい → 適用開始日を「2026-11-15」にして更新する。</div>
             </div>
           </details>
 
@@ -1385,7 +1491,20 @@ function loadFacilities() {
 }
 
 function refreshSelects() {
-  ['f-facility','h-facility'].forEach(id => {
+  // 注文フォーム：メンバー登録済み定期施設は除外（管理画面で管理）
+  const orderSel = document.getElementById('f-facility');
+  const orderCur = orderSel.value;
+  while (orderSel.options.length > 1) orderSel.remove(1);
+  const mems = getMembers();
+  FACILITIES.forEach(f => {
+    const isMemberManaged = REPEAT_SET.has(f) && Object.keys(mems[f]||{}).length > 0;
+    if (isMemberManaged) return;
+    const o = document.createElement('option'); o.value = o.textContent = f; orderSel.appendChild(o);
+  });
+  orderSel.value = orderCur;
+
+  // 履歴フォームは全施設
+  ['h-facility'].forEach(id => {
     const sel = document.getElementById(id);
     const cur = sel.value;
     while (sel.options.length > 1) sel.remove(1);
@@ -1409,6 +1528,7 @@ let masterUnlocked = false;  // マスタロック状態
 let pendingPinPage = 'admin'; // PIN認証後に開くページ
 let pinBuffer    = '';     // PIN入力バッファ
 let pendingNavBtn= null;   // PIN認証後に押すナビボタン
+let pendingGoMaster = false; // PIN後にマスタタブへ移動
 
 // ── Firebase ──────────────────────────────────────────────
 const FB_DB_URL = 'https://bento-order-2f1f9-default-rtdb.asia-southeast1.firebasedatabase.app';
@@ -1545,6 +1665,17 @@ function showAdminSub(sub, skipRender) {
 }
 
 // ── PIN ───────────────────────────────────────────────────
+function goToMaster() {
+  const adminBtn = document.querySelector('.nav-btn[onclick*="requirePin"]');
+  if (adminUnlocked) {
+    showPage('admin', adminBtn);
+    showAdminSub('master');
+  } else {
+    pendingGoMaster = true;
+    requirePin(adminBtn, 'admin');
+  }
+}
+
 function requirePin(btn, targetPage='admin') {
   if (adminUnlocked) { showPage(targetPage, btn); return; }
   pendingNavBtn  = btn;
@@ -1586,6 +1717,7 @@ function checkPin() {
     showPage(pendingPinPage, pendingNavBtn);
     pendingNavBtn = null;
     pinBuffer = '';
+    if (pendingGoMaster) { pendingGoMaster = false; showAdminSub('master'); }
   } else {
     for (let i=0; i<4; i++) document.getElementById('pd'+i).classList.add('error');
     document.getElementById('pin-error').textContent = '暗証番号が違います';
@@ -1852,11 +1984,21 @@ function applyPrices(f) {
   });
 }
 
+function isMorMode() {
+  const area = document.getElementById('member-order-area');
+  return area && area.style.display !== 'none';
+}
+
 function onFacilityChange() {
   const f = document.getElementById('f-facility').value;
-  document.getElementById('repeat-notice').style.display = REPEAT_SET.has(f) ? 'block' : 'none';
+  const hasMems = REPEAT_SET.has(f) && f && Object.keys(getMembers()[f]||{}).length > 0;
+  // 定期＋メンバーあり → メンバー別フォームモード
+  document.getElementById('repeat-notice').style.display = (REPEAT_SET.has(f) && !hasMems) ? 'block' : 'none';
   document.getElementById('irregular-box').style.display = f ? '' : 'none';
   document.getElementById('chk-irregular').checked = false;
+  document.getElementById('meal-lunch').style.display  = hasMems ? 'none' : '';
+  document.getElementById('meal-dinner').style.display = hasMems ? 'none' : '';
+  document.getElementById('member-order-area').style.display = hasMems ? '' : 'none';
   applyTapperMode(f);
   applyPrices(f);
   loadFormData();
@@ -1877,6 +2019,9 @@ function setFormLocked(locked) {
   document.querySelectorAll('#allergy-list input, #allergy-list button').forEach(el => el.disabled = locked);
   const addBtn = document.querySelector('#detail-allergy > button');
   if (addBtn) addBtn.disabled = locked;
+  // メンバー別フォームのロック
+  document.querySelectorAll('#member-order-rows .mor-ls, #member-order-rows .mor-ds, #member-order-rows .mor-cancel-btn')
+    .forEach(el => el.disabled = locked);
   const submitBtn = document.querySelector('#page-order .btn-primary');
   if (submitBtn) {
     submitBtn.disabled = locked;
@@ -1889,6 +2034,14 @@ function setFormLocked(locked) {
 function loadFormData() {
   const f    = document.getElementById('f-facility').value;
   const date = document.getElementById('f-date').value;
+  const hasMems = REPEAT_SET.has(f) && f && Object.keys(getMembers()[f]||{}).length > 0;
+  if (hasMems) {
+    renderMemberOrderForm(f, date);
+    const entry = date ? getOrders()[date]?.[f] : null;
+    const isLocked = entry && (entry.lunch || entry.dinner);
+    setFormLocked(!!isLocked);
+    return;
+  }
   if (!f||!date) { setFormLocked(false); return; }
   const entry = getOrders()[date]?.[f];
   if (entry) {
@@ -1900,6 +2053,144 @@ function loadFormData() {
     else { clearForm(); }
   }
   calcTotals();
+}
+
+// ── メンバー別注文フォーム ────────────────────────────────
+function renderMemberOrderForm(f, date) {
+  const fMembers = getMembers()[f] || {};
+  const mIds = Object.keys(fMembers);
+  if (!mIds.length) return;
+  const dispNames = buildDisplayNames(fMembers);
+  const existing = date ? (getOrders()[date]?.[f] || {}) : {};
+  const memberOvs = existing.members || {};
+  const tmplF = getTemplates()[f] || {};
+  const servesLunch  = tmplF.serves_lunch  !== false;
+  const servesDinner = tmplF.serves_dinner !== false;
+  const sizeOpts = (cur) => ['s','r','l'].map(s =>
+    `<option value="${s}" ${cur===s?'selected':''}>半盛／普通／大盛`.split('／')[['s','r','l'].indexOf(s)]+'</option>'
+  ).join('');
+  const szLbl = {s:'半盛',r:'普通',l:'大盛'};
+
+  const rows = mIds.map(id => {
+    const m = fMembers[id];
+    const isSusp = date && (m.suspensions||[]).some(s=>date>=s.from&&date<=s.to);
+    const isExited = m.exitDate && date && date >= m.exitDate;
+    const isNotEntered = m.entryDate && date && date < m.entryDate;
+    const inactive = isSusp || isExited || isNotEntered;
+    const mo = memberOvs[id] || {};
+    const cancelled = mo.cancelled === true;
+    const lSize = mo.lunch !== undefined ? mo.lunch : (m.lunchSize || 'r');
+    const dSize = mo.dinner !== undefined ? mo.dinner : (m.dinnerSize || 'r');
+    const dc = m.dinnerCount || 1;
+    const name = esc(dispNames[id] || m.name || id);
+
+    if (inactive) {
+      const badge = isSusp ? '🏥 一時停止' : isExited ? '退所' : '未入所';
+      return `<div class="mor-row" data-mid="${esc(id)}" data-cancelled="true" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f1f5f9;background:#f8fafc;opacity:0.5;">
+        <span style="flex:1;font-size:14px;font-weight:600;color:#64748b;">${name}</span>
+        <span style="font-size:12px;color:#94a3b8;">${badge}</span>
+      </div>`;
+    }
+
+    const cancelledStyle = cancelled ? 'opacity:0.4;text-decoration:line-through;' : '';
+    const lunchCell = servesLunch ? `
+      <label style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:3px;white-space:nowrap;">
+        ☀️<select class="mor-ls" data-mid="${esc(id)}" onchange="calcMorTotals()" style="font-size:12px;padding:3px 4px;border:1px solid #e2e8f0;border-radius:5px;" ${cancelled?'disabled':''}>
+          ${['s','r','l'].map(s=>`<option value="${s}" ${lSize===s?'selected':''}>${szLbl[s]}</option>`).join('')}
+        </select>
+      </label>` : '';
+    const dinnerCell = servesDinner ? `
+      <label style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:3px;white-space:nowrap;">
+        🌙<select class="mor-ds" data-mid="${esc(id)}" onchange="calcMorTotals()" style="font-size:12px;padding:3px 4px;border:1px solid #e2e8f0;border-radius:5px;" ${cancelled?'disabled':''}>
+          ${['s','r','l'].map(s=>`<option value="${s}" ${dSize===s?'selected':''}>${szLbl[s]}${dc>1?`×${dc}`:''}</option>`).join('')}
+        </select>
+      </label>` : '';
+    return `<div class="mor-row" data-mid="${esc(id)}" data-cancelled="${cancelled}" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f1f5f9;${cancelledStyle}">
+      <span style="flex:1;font-size:14px;font-weight:700;color:#1e293b;min-width:60px;">${name}</span>
+      ${lunchCell}${dinnerCell}
+      <button class="mor-cancel-btn" onclick="toggleMorCancel('${esc(f)}','${esc(id)}')" style="font-size:11px;padding:3px 10px;border:1px solid ${cancelled?'#16a34a':'#e2e8f0'};border-radius:5px;background:white;color:${cancelled?'#16a34a':'#64748b'};cursor:pointer;white-space:nowrap;flex-shrink:0;">${cancelled?'戻す':'キャンセル'}</button>
+    </div>`;
+  }).join('');
+
+  document.getElementById('member-order-rows').innerHTML =
+    `<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:700;color:#94a3b8;">
+      <span style="flex:1;">名前</span>${servesLunch?'<span style="width:76px;">☀️ 昼食</span>':''}${servesDinner?'<span style="width:76px;">🌙 夕食</span>':''}<span style="width:68px;"></span>
+    </div>
+    ${rows}
+    <div id="mor-total-row" style="padding:9px 14px;background:#f0fdf4;font-size:13px;font-weight:700;color:#166534;border-top:2px solid #bbf7d0;"></div>`;
+  calcMorTotals();
+}
+
+function toggleMorCancel(f, id) {
+  const row = document.querySelector(`#member-order-rows .mor-row[data-mid="${id}"]`);
+  if (!row) return;
+  const cancelled = row.dataset.cancelled === 'true';
+  const next = !cancelled;
+  row.dataset.cancelled = next;
+  row.style.opacity = next ? '0.4' : '';
+  row.style.textDecoration = next ? 'line-through' : '';
+  const lsSel = row.querySelector('.mor-ls');
+  const dsSel = row.querySelector('.mor-ds');
+  if (lsSel) lsSel.disabled = next;
+  if (dsSel) dsSel.disabled = next;
+  const btn = row.querySelector('.mor-cancel-btn');
+  if (btn) {
+    btn.textContent = next ? '戻す' : 'キャンセル';
+    btn.style.borderColor = next ? '#16a34a' : '#e2e8f0';
+    btn.style.color = next ? '#16a34a' : '#64748b';
+  }
+  calcMorTotals();
+}
+
+function calcMorTotals() {
+  const f = document.getElementById('f-facility').value;
+  const fMembers = getMembers()[f] || {};
+  const tmplF = getTemplates()[f] || {};
+  const servesLunch  = tmplF.serves_lunch  !== false;
+  const servesDinner = tmplF.serves_dinner !== false;
+  let ls=0,lr=0,ll=0, ds=0,dr=0,dl=0;
+  document.querySelectorAll('#member-order-rows .mor-row').forEach(row => {
+    if (row.dataset.cancelled === 'true') return;
+    const id = row.dataset.mid;
+    const dc = fMembers[id]?.dinnerCount || 1;
+    const lsSel = row.querySelector('.mor-ls');
+    const dsSel = row.querySelector('.mor-ds');
+    if (servesLunch  && lsSel) { const v=lsSel.value; if(v==='s')ls++; else if(v==='r')lr++; else if(v==='l')ll++; }
+    if (servesDinner && dsSel) { const v=dsSel.value; if(v==='s')ds+=dc; else if(v==='r')dr+=dc; else if(v==='l')dl+=dc; }
+  });
+  const lt=ls+lr+ll, dt=ds+dr+dl;
+  const el = document.getElementById('mor-total-row');
+  if (el) {
+    const lPart = servesLunch  ? `☀️ 昼 ${lt}食（半${ls} 普${lr} 大${ll}）　` : '';
+    const dPart = servesDinner ? `🌙 夕 ${dt}食（半${ds} 普${dr} 大${dl}）` : '';
+    el.innerHTML = `合計　${lPart}${dPart}`;
+  }
+  document.getElementById('lunch-total-lbl').textContent  = (servesLunch  && lt) ? `合計 ${lt} 食` : '';
+  document.getElementById('dinner-total-lbl').textContent = (servesDinner && dt) ? `合計 ${dt} 食` : '';
+}
+
+function getMorEntry() {
+  const f = document.getElementById('f-facility').value;
+  const fMembers = getMembers()[f] || {};
+  const tmplF = getTemplates()[f] || {};
+  const servesLunch  = tmplF.serves_lunch  !== false;
+  const servesDinner = tmplF.serves_dinner !== false;
+  const members = {};
+  let ls=0,lr=0,ll=0, ds=0,dr=0,dl=0;
+  document.querySelectorAll('#member-order-rows .mor-row').forEach(row => {
+    const id = row.dataset.mid;
+    const dc = fMembers[id]?.dinnerCount || 1;
+    if (row.dataset.cancelled === 'true') {
+      members[id] = { cancelled: true };
+      return;
+    }
+    const lsVal = servesLunch  ? (row.querySelector('.mor-ls')?.value || 'r') : '';
+    const dsVal = servesDinner ? (row.querySelector('.mor-ds')?.value || 'r') : '';
+    members[id] = { ...(servesLunch?{lunch:lsVal}:{}), ...(servesDinner?{dinner:dsVal}:{}) };
+    if(servesLunch)  { if(lsVal==='s')ls++; else if(lsVal==='r')lr++; else if(lsVal==='l')ll++; }
+    if(servesDinner) { if(dsVal==='s')ds+=dc; else if(dsVal==='r')dr+=dc; else if(dsVal==='l')dl+=dc; }
+  });
+  return { lunch:{s:ls,r:lr,l:ll}, dinner:{s:ds,r:dr,l:dl}, members };
 }
 
 function fillForm(d) {
@@ -2050,6 +2341,7 @@ function adj(id, delta) {
   calcTotals();
 }
 function calcTotals() {
+  if (isMorMode()) { calcMorTotals(); return; }
   const lt=nv('ls')+nv('lr')+nv('ll')+nv('ltap'), dt=nv('ds')+nv('dr')+nv('dl')+nv('dtap');
   document.getElementById('lunch-total-lbl').textContent  = lt ? `合計 ${lt} 食` : '';
   document.getElementById('dinner-total-lbl').textContent = dt ? `合計 ${dt} 食` : '';
@@ -2094,6 +2386,14 @@ function submitOrder() {
   if (!f)    { toast('事業所を選択してください','ng'); return; }
   if (!date) { toast('日付を選択してください','ng');   return; }
   if (getOrders()[date]?.[f]) { toast('この事業所・日付はすでに注文済みです','ng'); return; }
+  // メンバー別フォームモード → モーダルなしで当日のみ保存
+  if (isMorMode()) {
+    const entry = getMorEntry();
+    entry.savedAt = new Date().toISOString();
+    if (lT(entry)+dT(entry)===0) { toast('有効な注文がありません（全員キャンセルの場合は定期停止をご利用ください）','ng'); return; }
+    saveEntry(f, date, entry, false);
+    return;
+  }
   const entry=getFormEntry();
   if (lT(entry)+dT(entry)===0) { toast('注文数を入力してください','ng'); return; }
   if (REPEAT_SET.has(f) && getTemplates()[f]) {
@@ -2144,7 +2444,7 @@ function renderAdmin() {
   // テンプレート vs 当日注文のマージ
   const merged={};
   FACILITIES.forEach(f => {
-    if (dayData[f]) {
+    if (dayData[f] && (dayData[f].lunch || dayData[f].dinner)) {
       const tmpl=tmpls[f];
       const isOverride = tmpl && REPEAT_SET.has(f) && (
         JSON.stringify({l:dayData[f].lunch,d:dayData[f].dinner}) !==
@@ -2153,7 +2453,14 @@ function renderAdmin() {
       merged[f]={...dayData[f], _type: REPEAT_SET.has(f) ? (isOverride?'override':'manual') : 'manual'};
     } else if (REPEAT_SET.has(f) && tmpls[f]) {
       const days=tmpls[f].days||[0,1,2,3,4,5,6];
-      if (days.includes(dow)) merged[f]={...tmpls[f], allergy:'', _type:'tmpl'};
+      const isFacSusp=(tmpls[f].suspensions||[]).some(s=>date>=s.from&&date<=s.to);
+      if (days.includes(dow)&&!isFacSusp) {
+        const memberOvs=dayData[f]?.members||{};
+        const paused=Object.fromEntries(Object.entries(memberOvs).filter(([,v])=>v.cancelled).map(([id])=>[id,true]));
+        const mt=calcMemberTotals(f,paused,date);
+        const noDays=!tmpls[f].days;
+        merged[f]={...tmpls[f], lunch:mt.lunch, dinner:mt.dinner, allergy:'', _type:'tmpl', _noDays:noDays};
+      }
     }
   });
 
@@ -2366,6 +2673,7 @@ function renderAdmin() {
     let typeBadge='';
     if (o._type==='tmpl')          typeBadge=`<span class="badge badge-green">定期</span>`;
     else if (o._type==='override') typeBadge=`<span class="badge badge-orange">当日変更</span>`;
+    if (o._noDays) typeBadge+=`<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:1px 5px;margin-left:3px;">⚠️ 曜日未設定</span>`;
     if (o.irregular) typeBadge+=`<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:1px 5px;margin-left:3px;">⚠️ イレギュラー</span>`;
 
     const lTapper = isTapper(f,'lunch');
@@ -2392,24 +2700,45 @@ function renderAdmin() {
       const memberRows = facMembers.map(m => {
         const ov  = memberOverrides[m.id] || {};
         const cancelled = ov.cancelled === true;
-        const lSize = cancelled ? null : (ov.lunch  !== undefined ? ov.lunch  : m.lunchSize  || '');
-        const dSize = cancelled ? null : (ov.dinner !== undefined ? ov.dinner : m.dinnerSize || '');
+        const isSuspMember = (m.suspensions||[]).some(s=>date>=s.from&&date<=s.to);
+        const isExited = m.exitDate && date >= m.exitDate;
+        const isNotEntered = m.entryDate && date < m.entryDate;
+        const memberInactive = isSuspMember || isExited || isNotEntered;
+        const lSize = (cancelled||memberInactive) ? null : (ov.lunch  !== undefined ? ov.lunch  : m.lunchSize  || '');
+        const dSize = (cancelled||memberInactive) ? null : (ov.dinner !== undefined ? ov.dinner : m.dinnerSize || '');
         const dc = m.dinnerCount || 1;
         const sizeLabel = { s:'半盛', r:'普通', l:'大盛' };
-        const cancelStyle = cancelled ? 'opacity:0.4;text-decoration:line-through;' : '';
+        const inactiveStyle = (cancelled||memberInactive) ? 'opacity:0.4;text-decoration:line-through;' : '';
         const disp = m.name || m.id;
         const dLabel = dSize ? `🌙 ${sizeLabel[dSize]||dSize}${dc>1?`×${dc}`:''}` : '🌙 −';
-        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;background:${cancelled?'#f8fafc':'white'};margin-bottom:3px;${cancelStyle}">
+        const statusBadge = cancelled
+          ? '<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;padding:1px 6px;">キャンセル</span>'
+          : isSuspMember
+          ? `<span style="font-size:11px;font-weight:700;color:#7c3aed;background:#f3e8ff;border:1px solid #c4b5fd;border-radius:4px;padding:1px 6px;">🏥一時停止</span>`
+          : isExited
+          ? '<span style="font-size:11px;font-weight:700;color:#94a3b8;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;">退所</span>'
+          : isNotEntered
+          ? '<span style="font-size:11px;font-weight:700;color:#94a3b8;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;">未入所</span>'
+          : '';
+        const showCancel = !memberInactive && !isExited && !isNotEntered;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;background:${(cancelled||memberInactive)?'#f8fafc':'white'};margin-bottom:3px;${inactiveStyle}">
           <span style="font-size:13px;font-weight:700;color:#1e293b;min-width:80px;">${esc(disp)}</span>
           ${lSize?`<span style="font-size:12px;color:#64748b;">☀️ ${sizeLabel[lSize]||lSize}</span>`:''}
           <span style="font-size:12px;color:#64748b;">${dLabel}</span>
-          ${cancelled?'<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;padding:1px 6px;">キャンセル</span>':''}
-          <button onclick="toggleMemberCancel('${esc(f)}','${date}','${esc(m.id)}')" style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid ${cancelled?'#16a34a':'#e2e8f0'};border-radius:5px;background:white;color:${cancelled?'#16a34a':'#64748b'};cursor:pointer;font-weight:600;">${cancelled?'戻す':'キャンセル'}</button>
+          ${statusBadge}
+          ${showCancel?`<button onclick="toggleMemberCancel('${esc(f)}','${date}','${esc(m.id)}')" style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid ${cancelled?'#16a34a':'#e2e8f0'};border-radius:5px;background:white;color:${cancelled?'#16a34a':'#64748b'};cursor:pointer;font-weight:600;">${cancelled?'戻す':'キャンセル'}</button>`:'<span style="margin-left:auto;"></span>'}
         </div>`;
       }).join('');
+      const isManualOrder = o._type==='manual'||o._type==='override';
+      const manualNote = isManualOrder
+        ? `<div style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:5px 10px;margin-bottom:8px;">
+            ⚠️ ${o._type==='override'?'当日変更':'手動'}注文のため個人別サイズは定期設定の参考表示です。一時停止・退所は反映済み。
+          </div>`
+        : '';
       memberDetailHtml = `<tr id="mdetail-${esc(f)}-${date}" style="display:none;">
         <td colspan="10" style="padding:8px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
           <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:6px;">個人別注文</div>
+          ${manualNote}
           ${memberRows}
         </td>
       </tr>`;
@@ -2490,6 +2819,15 @@ function buildDisplayNames(fMembers) {
 }
 
 function toggleMemberCancel(f, date, memberId) {
+  // 当日9時以降はブロック
+  const today = getTodayStr();
+  if (date === today) {
+    const h = new Date().getHours();
+    if (h >= 9) {
+      toast('🔒 9時を過ぎています。当日変更はお電話でご連絡ください', 'ng');
+      return;
+    }
+  }
   const orders = getOrders();
   const entry  = orders[date]?.[f] || {};
   const members = { ...(entry.members || {}) };
@@ -2515,18 +2853,21 @@ function renderMemberMaster() {
   const members = getMembers();           // { facName: { id: {name, lunchSize, dinnerSize}, ... }, ... }
   const facs = FACILITIES;
 
+  const tmpls = getTemplates();
   const html = facs.map(f => {
     const fmembers = members[f] || {};
+    const tmplF = tmpls[f] || {};
+    const servesLunch  = tmplF.serves_lunch  !== false;
+    const servesDinner = tmplF.serves_dinner !== false;
     const mList = Object.entries(fmembers).map(([id, m]) => {
       const dc = m.dinnerCount || 1;
-      return `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);">
-        <span style="flex:1;font-size:14px;font-weight:600;">${esc(m.name||id)}</span>
+      const lunchSel = servesLunch ? `
         <select onchange="updateMemberSize('${esc(f)}','${id}','lunch',this.value)" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;width:62px;">
           <option value="s" ${(m.lunchSize||'r')==='s'?'selected':''}>半盛</option>
           <option value="r" ${(m.lunchSize||'r')==='r'?'selected':''}>普通</option>
           <option value="l" ${(m.lunchSize||'r')==='l'?'selected':''}>大盛</option>
-        </select>
+        </select>` : '';
+      const dinnerSel = servesDinner ? `
         <select onchange="updateMemberSize('${esc(f)}','${id}','dinner',this.value)" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;width:62px;">
           <option value="s" ${(m.dinnerSize||'r')==='s'?'selected':''}>半盛</option>
           <option value="r" ${(m.dinnerSize||'r')==='r'?'selected':''}>普通</option>
@@ -2537,17 +2878,31 @@ function renderMemberMaster() {
           <option value="1" ${dc===1?'selected':''}>×1</option>
           <option value="2" ${dc===2?'selected':''}>×2</option>
           <option value="3" ${dc===3?'selected':''}>×3</option>
-        </select>
+        </select>` : '';
+      return `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);">
+        <span style="flex:1;font-size:14px;font-weight:600;">${esc(m.name||id)}</span>
+        ${lunchSel}${dinnerSel}
         <button onclick="deleteMember('${esc(f)}','${id}')" style="font-size:11px;padding:3px 8px;border:1px solid #fca5a5;border-radius:6px;background:white;color:#dc2626;cursor:pointer;">削除</button>
       </div>`;
     }).join('');
 
     const count = Object.keys(fmembers).length;
+    const repSet = typeof REPEAT_SET !== 'undefined' && REPEAT_SET.has(f);
+    const mealToggle = repSet ? `
+      <span style="display:flex;gap:10px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:400;cursor:pointer;">
+          <input type="checkbox" id="mst-lunch-${esc(f)}" ${servesLunch?'checked':''} onchange="toggleMealServes('${esc(f)}','lunch',this.checked)" style="cursor:pointer;">☀️昼
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:400;cursor:pointer;">
+          <input type="checkbox" id="mst-dinner-${esc(f)}" ${servesDinner?'checked':''} onchange="toggleMealServes('${esc(f)}','dinner',this.checked)" style="cursor:pointer;">🌙夕
+        </label>
+      </span>` : `<span style="font-size:12px;color:var(--muted);">${[servesLunch?'☀️昼':'',servesDinner?'🌙夕':''].filter(Boolean).join('　')}</span>`;
     return `
       <div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;">
         <div style="background:var(--surface2,#f8fafc);padding:10px 14px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
           <span>${esc(f)} <span style="font-weight:400;font-size:12px;color:var(--muted);">${count}名</span></span>
-          <span style="font-size:12px;color:var(--muted);">☀️昼　🌙夕</span>
+          ${mealToggle}
         </div>
         ${mList || '<div style="padding:10px 14px;font-size:13px;color:var(--muted);">まだメンバーがいません</div>'}
         <div style="padding:8px 10px;display:flex;gap:6px;align-items:center;border-top:1px solid var(--border);">
@@ -2558,6 +2913,21 @@ function renderMemberMaster() {
   }).join('');
 
   area.innerHTML = html || '<div style="color:var(--muted);font-size:14px;">事業所を先に登録してください</div>';
+}
+
+function toggleMealServes(f, meal, checked) {
+  if (!checked) {
+    const tmplF = getTemplates()[f] || {};
+    const other = meal === 'lunch' ? (tmplF.serves_dinner !== false) : (tmplF.serves_lunch !== false);
+    if (!other) { toast('昼食・夕食のどちらかは「あり」にしてください','ng'); const el = document.getElementById(`mst-${meal}-${f}`); if (el) el.checked = true; return; }
+  }
+  const t = getTemplates();
+  if (!t[f]) t[f] = {};
+  t[f][`serves_${meal}`] = checked;
+  saveTemplates(t);
+  renderMemberMaster();
+  renderSettings();
+  toast(`${f}：${meal==='lunch'?'☀️昼食':'🌙夕食'}を「${checked?'あり':'なし'}」に変更しました`);
 }
 
 function addMember(f) {
@@ -2584,14 +2954,38 @@ function deleteMember(f, id) {
   }
 }
 
+function getMemberSizeForDate(m, date) {
+  const h = m.sizeHistory;
+  if (!h || !h.length) return { lunchSize: m.lunchSize||'r', dinnerSize: m.dinnerSize||'r', dinnerCount: m.dinnerCount||1 };
+  const sorted = [...h].sort((a,b) => a.from < b.from ? -1 : 1); // 昇順
+  let result = sorted[0];
+  for (const e of sorted) { if (e.from <= date) result = e; }
+  return result;
+}
+
+function getTemplateForDate(f, date) {
+  const t = getTemplates()[f];
+  if (!t || !t.history || !t.history.length) return t;
+  const sorted = [...t.history].sort((a,b) => a.from < b.from ? -1 : 1); // 昇順
+  let result = sorted[0];
+  for (const e of sorted) { if (e.from <= date) result = e; }
+  return result ? { ...t, ...result } : t;
+}
+
 function updateMemberSize(f, id, meal, val) {
   const members = JSON.parse(JSON.stringify(getMembers()));
   if (!members[f] || !members[f][id]) return;
-  if (meal === 'lunch')        members[f][id].lunchSize   = val;
-  else if (meal === 'dinner')  members[f][id].dinnerSize  = val;
-  else if (meal === 'dinnerCount') members[f][id].dinnerCount = parseInt(val) || 1;
+  const m = members[f][id];
+  if (meal === 'lunch')            m.lunchSize   = val;
+  else if (meal === 'dinner')      m.dinnerSize  = val;
+  else if (meal === 'dinnerCount') m.dinnerCount = parseInt(val) || 1;
+  // 変更を今日付きで履歴に記録（今日分は上書き）
+  const today = getTodayStr();
+  if (!m.sizeHistory) m.sizeHistory = [];
+  m.sizeHistory = m.sizeHistory.filter(e => e.from !== today);
+  m.sizeHistory.push({ lunchSize: m.lunchSize||'r', dinnerSize: m.dinnerSize||'r', dinnerCount: m.dinnerCount||1, from: today });
   saveMembers(members);
-  if (meal === 'dinnerCount') renderSettings(); // 定期注文フォームの合計を更新
+  if (meal === 'dinnerCount') renderSettings();
 }
 
 // ── 訂正モーダル ──────────────────────────────────────────
@@ -2634,7 +3028,9 @@ function saveCorrection() {
     specialItems: getOrders()[correctCtx.date]?.[correctCtx.f]?.specialItems || {},
     savedAt: new Date().toISOString(), corrected: true
   };
-  if (lT(entry)+dT(entry)===0) { toast('注文数を入力してください','ng'); return; }
+  if (lT(entry)+dT(entry)===0) {
+    if (!confirm(`${f}（${date}）の注文をすべて0件で訂正します。よろしいですか？`)) return;
+  }
   const orders=getOrders();
   if (!orders[date]) orders[date]={};
   orders[date][f]=entry;
@@ -2688,10 +3084,10 @@ function getEffectiveItems(from, to) {
         // 明示的注文があればそちらを使う
         items.push({ date: dateStr, f, ...dayData[f] });
       } else if (REPEAT_SET.has(f) && tmpls[f]) {
-        // 定期テンプレートの曜日設定に合致する日のみ補完（effectiveFrom以降のみ）
-        const days = tmpls[f].days || [1,2,3,4,5];
+        // その日付時点のテンプレートを使用（変更前後で過去に影響しない）
+        const tmplForDate = getTemplateForDate(f, dateStr) || tmpls[f];
+        const days = tmplForDate.days || [1,2,3,4,5];
         if (days.includes(dow)) {
-          // メンバー別の退所・入所日・一時停止を考慮して数量を再計算
           const allMembers = getMembers()[f];
           let lunch, dinner;
           if (allMembers) {
@@ -2699,8 +3095,10 @@ function getEffectiveItems(from, to) {
             lunch  = t.lunch;
             dinner = t.dinner;
           } else {
-            lunch  = { ...tmpls[f].lunch  };
-            dinner = { ...tmpls[f].dinner };
+            const sL = tmplForDate.serves_lunch  !== false;
+            const sD = tmplForDate.serves_dinner !== false;
+            lunch  = sL ? { ...tmplForDate.lunch  } : {s:0,r:0,l:0};
+            dinner = sD ? { ...tmplForDate.dinner } : {s:0,r:0,l:0};
           }
           items.push({ date: dateStr, f, lunch, dinner, _fromTemplate: true });
         }
@@ -2791,6 +3189,20 @@ function renderMonthly() {
         const cells = mIds.map(id => {
           const mem = fmembers[id];
           const mo = rawEntry?.members?.[id];
+          // 一時停止・退所・未入所チェック（実績に反映）
+          const isSuspMember = (mem.suspensions||[]).some(s=>date>=s.from&&date<=s.to);
+          const isExited = mem.exitDate && date >= mem.exitDate;
+          const isNotEntered = mem.entryDate && date < mem.entryDate;
+          if (isSuspMember) {
+            totals[id].cancel++;
+            return `<td style="text-align:center;color:#7c3aed;font-size:12px;" title="一時停止">🏥</td>`;
+          }
+          if (isExited) {
+            return `<td style="text-align:center;color:var(--muted);font-size:11px;" title="退所">退</td>`;
+          }
+          if (isNotEntered) {
+            return `<td style="text-align:center;color:var(--muted);font-size:11px;" title="未入所">未</td>`;
+          }
           if (mo?.cancelled) {
             totals[id].cancel++;
             return `<td style="text-align:center;color:#dc2626;font-size:12px;">✕</td>`;
@@ -3312,6 +3724,8 @@ function renderSettings() {
     }).join('');
 
     if (hasMember) {
+      const servesLunch  = tmpl?.serves_lunch  !== false;
+      const servesDinner = tmpl?.serves_dinner !== false;
       const sizeLabel = {s:'半盛',r:'普通',l:'大盛','':'なし'};
       const dispNames = buildDisplayNames(fMembers);
       const activeEntries  = Object.entries(fMembers).filter(([,m]) => !m.exitDate);
@@ -3325,15 +3739,14 @@ function renderSettings() {
           : '';
         const sOpts = ['','s','r','l'];
         const sLbls = ['なし','半盛','普通','大盛'];
-        const detailPanel = `<div id="suspform-${f}-${id}" style="display:none;margin-top:6px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
-          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">サイズ・食数</div>
-          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        const lunchSizeRow = servesLunch ? `
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-size:12px;">☀️ 昼食</span>
               <select onchange="updateMemberSize('${f}','${id}','lunch',this.value)" style="font-size:12px;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;">
                 ${sOpts.map((v,i)=>`<option value="${v}" ${(m.lunchSize||'')===v?'selected':''}>${sLbls[i]}</option>`).join('')}
               </select>
-            </div>
+            </div>` : '';
+        const dinnerSizeRow = servesDinner ? `
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-size:12px;">🌙 夕食</span>
               <select onchange="updateMemberSize('${f}','${id}','dinner',this.value)" style="font-size:12px;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;">
@@ -3344,7 +3757,17 @@ function renderSettings() {
                 <option value="2" ${(m.dinnerCount||1)===2?'selected':''}>×2</option>
                 <option value="3" ${(m.dinnerCount||1)===3?'selected':''}>×3</option>
               </select>
-            </div>
+            </div>` : '';
+        const suspList = (m.suspensions||[]).length
+          ? (m.suspensions||[]).map((s,i) => {
+              const lbl = s.from===s.to ? fmtDate(s.from) : `${fmtDate(s.from)}〜${fmtDate(s.to)}`;
+              return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span style="font-size:11px;flex:1;">${s.reason}　${lbl}</span><button onclick="removeMemberSusp('${f}','${id}',${i})" style="border:none;background:none;cursor:pointer;color:var(--muted);">✕</button></div>`;
+            }).join('')
+          : '<span style="font-size:11px;color:var(--muted);">なし</span>';
+        const detailPanel = `<div id="suspform-${f}-${id}" style="display:none;margin-top:6px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">サイズ・食数</div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+            ${lunchSizeRow}${dinnerSizeRow}
           </div>
           <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">一時停止</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
@@ -3356,10 +3779,7 @@ function renderSettings() {
             <input type="date" id="st-${f}-${id}" style="border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;">
             <button onclick="addMemberSusp('${f}','${id}')" style="font-size:12px;padding:4px 10px;border:1.5px solid var(--border);border-radius:6px;background:none;cursor:pointer;">登録</button>
           </div>
-          ${(m.suspensions||[]).length ? (m.suspensions||[]).map((s,i)=>{
-            const lbl = s.from===s.to?fmtDate(s.from):`${fmtDate(s.from)}〜${fmtDate(s.to)}`;
-            return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span style="font-size:11px;flex:1;">${s.reason}　${lbl}</span><button onclick="removeMemberSusp('${f}','${id}',${i})" style="border:none;background:none;cursor:pointer;color:var(--muted);">✕</button></div>`;
-          }).join('') : '<span style="font-size:11px;color:var(--muted);">なし</span>'}
+          ${suspList}
           <div style="font-size:10px;color:var(--muted);margin-top:4px;">終了日を省略すると1日のみ停止</div>
           <hr style="border:none;border-top:1px solid var(--border);margin:10px 0 8px;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -3372,8 +3792,8 @@ function renderSettings() {
         return `<div style="padding:8px 0;border-bottom:1px solid var(--border);">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:14px;font-weight:600;flex:1;${todaySusp?'color:var(--muted);':''}">${esc(disp)}${suspBadge}</span>
-            ${lSize?`<span style="font-size:11px;color:#92400e;padding:0 4px;">☀️${sizeLabel[lSize]}</span>`:''}
-            <span style="font-size:11px;color:#6d28d9;padding:0 4px;">🌙${dSize?sizeLabel[dSize]:'−'}${(m.dinnerCount||1)>1?`×${m.dinnerCount||1}`:''}</span>
+            ${(servesLunch && lSize) ? `<span style="font-size:11px;color:#92400e;padding:0 4px;">☀️${sizeLabel[lSize]}</span>` : ''}
+            ${servesDinner ? `<span style="font-size:11px;color:#6d28d9;padding:0 4px;">🌙${dSize?sizeLabel[dSize]:'−'}${(m.dinnerCount||1)>1?`×${m.dinnerCount||1}`:''}</span>` : ''}
             <button onclick="const p=document.getElementById('suspform-${f}-${id}');p.style.display=p.style.display==='none'?'block':'none'" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--muted);flex-shrink:0;">変更▼</button>
           </div>
           ${detailPanel}
@@ -3420,6 +3840,19 @@ function renderSettings() {
             <button class="btn btn-primary btn-sm" style="align-self:flex-start;" onclick="addNewMemberFromTemplate('${f}')">追加する</button>
           </div>
         </details>
+        <div style="display:flex;gap:16px;align-items:center;padding:10px 0 2px;font-size:13px;">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:600;">
+            <input type="checkbox" id="srv-lunch-${f}" ${tmpl?.serves_lunch!==false?'checked':''} onchange="recalcTemplate('${f}')"> ☀️ 昼食あり
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:600;">
+            <input type="checkbox" id="srv-dinner-${f}" ${tmpl?.serves_dinner!==false?'checked':''} onchange="recalcTemplate('${f}')"> 🌙 夕食あり
+          </label>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted);">
+          <label style="white-space:nowrap;">適用開始日</label>
+          <input type="date" id="tmpl-from-${f}" value="${getTodayStr()}" style="border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--text);background:var(--surface);">
+          <span style="font-size:11px;color:var(--muted);">以降に反映</span>
+        </div>
         <div class="setting-actions">
           <button class="btn btn-success btn-sm" style="flex:1" onclick="saveTemplateFromMembers('${f}')">${has?'更新する':'設定する'}</button>
           ${has?`<button class="btn btn-ghost btn-sm" onclick="confirmReset('${f}')">削除</button>`:''}
@@ -3443,6 +3876,19 @@ function renderSettings() {
         <div class="setting-meal"><div class="setting-meal-label"><span class="meal-badge badge-dinner" style="font-size:12px;padding:3px 10px;">🌙 夕食</span></div>
           <div class="setting-size-row">${['半盛','普通','大盛'].map((lbl,i)=>{const key=['ds','dr','dl'][i],val=[ds,dr,dl][i];return`<div class="setting-size-item"><div class="setting-size-lbl">${lbl}</div><div class="setting-qty-ctrl"><button class="setting-qty-btn" onclick="sadj('${f}','${key}',-1)">−</button><input class="setting-qty-num" type="number" id="s-${f}-${key}" value="${val}" min="0"><button class="setting-qty-btn" onclick="sadj('${f}','${key}',1)">＋</button></div></div>`;}).join('')}</div>
         </div>
+        <div style="display:flex;gap:16px;align-items:center;padding:10px 0 2px;font-size:13px;">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:600;">
+            <input type="checkbox" id="srv-lunch-${f}" ${tmpl?.serves_lunch!==false?'checked':''}> ☀️ 昼食あり
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:600;">
+            <input type="checkbox" id="srv-dinner-${f}" ${tmpl?.serves_dinner!==false?'checked':''}> 🌙 夕食あり
+          </label>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted);">
+          <label style="white-space:nowrap;">適用開始日</label>
+          <input type="date" id="tmpl-from-${f}" value="${getTodayStr()}" style="border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--text);background:var(--surface);">
+          <span style="font-size:11px;color:var(--muted);">以降に反映</span>
+        </div>
         <div class="setting-actions">
           <button class="btn btn-success btn-sm" style="flex:1" onclick="saveTemplate('${f}')">${has?'更新する':'設定する'}</button>
           ${has?`<button class="btn btn-ghost btn-sm" onclick="confirmReset('${f}')">削除</button>`:''}
@@ -3453,20 +3899,24 @@ function renderSettings() {
 }
 
 function calcMemberTotals(f, paused, forDate) {
+  const d = forDate || getTodayStr();
+  const tmpl = getTemplateForDate(f, d) || {};
+  const servesLunch  = tmpl.serves_lunch  !== false;
+  const servesDinner = tmpl.serves_dinner !== false;
   const fMembers = getMembers()[f] || {};
   const totals = { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0} };
-  const d = forDate || getTodayStr();
   Object.entries(fMembers).forEach(([id, m]) => {
     if (paused[id]) return;
     if (m.exitDate && d >= m.exitDate) return;
     if (m.entryDate && d < m.entryDate) return;
     const isSuspended = (m.suspensions||[]).some(s => d >= s.from && d <= s.to);
     if (isSuspended) return;
-    const ls = m.lunchSize || '';
-    const ds = m.dinnerSize || '';
-    const dc = m.dinnerCount || 1;
-    if (ls && totals.lunch[ls]  !== undefined) totals.lunch[ls]++;
-    if (ds && totals.dinner[ds] !== undefined) totals.dinner[ds] += dc;
+    const sz = getMemberSizeForDate(m, d);
+    const ls = sz.lunchSize || '';
+    const ds = sz.dinnerSize || '';
+    const dc = sz.dinnerCount || 1;
+    if (servesLunch  && ls && totals.lunch[ls]  !== undefined) totals.lunch[ls]++;
+    if (servesDinner && ds && totals.dinner[ds] !== undefined) totals.dinner[ds] += dc;
   });
   return totals;
 }
@@ -3485,17 +3935,29 @@ function recalcTemplate(f) {
 }
 
 function saveTemplateFromMembers(f) {
+  const servesLunch  = document.getElementById(`srv-lunch-${f}`)?.checked !== false;
+  const servesDinner = document.getElementById(`srv-dinner-${f}`)?.checked !== false;
+  if (!servesLunch && !servesDinner) { toast('昼食・夕食のどちらかは「あり」にしてください','ng'); return; }
   const totals = calcMemberTotals(f, {});
   const lt = totals.lunch.s + totals.lunch.r + totals.lunch.l;
   const dt = totals.dinner.s + totals.dinner.r + totals.dinner.l;
-  if (lt + dt === 0) { toast('在籍中のメンバーが0人です','ng'); return; }
+  if (lt + dt === 0) {
+    const raw = Object.values(getMembers()[f]||{}).filter(m=>!m.exitDate);
+    if (!raw.length) { toast('在籍中のメンバーが0人です','ng'); return; }
+  }
   const days = getActiveDays(f);
   if (days.length === 0) { toast('注文曜日を1日以上選択してください','ng'); return; }
+  const fromDate = document.getElementById(`tmpl-from-${f}`)?.value || getTodayStr();
   const t = getTemplates();
-  t[f] = { lunch: totals.lunch, dinner: totals.dinner, days };
+  const snapshot = { lunch: totals.lunch, dinner: totals.dinner, days, serves_lunch: servesLunch, serves_dinner: servesDinner, from: fromDate };
+  if (!t[f]) t[f] = {};
+  if (!t[f].history) t[f].history = [];
+  t[f].history = t[f].history.filter(e => e.from !== fromDate);
+  t[f].history.push(snapshot);
+  t[f] = { ...t[f], ...snapshot };
   saveTemplates(t);
   renderSettings();
-  toast(`${f} の定期注文を保存しました ✓`, 'ok');
+  toast(`${f} の定期注文を保存しました（${fromDate}〜） ✓`, 'ok');
 }
 
 // 曜日チップのトグル（保存せず表示だけ更新）
@@ -3542,12 +4004,13 @@ function renderMemberSuspension(f, id, m) {
         <select id="sr-${f}-${id}" style="border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;">
           ${SUSP_REASONS.map(r=>`<option>${r}</option>`).join('')}
         </select>
-        <input type="date" id="sf-${f}-${id}" style="border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;">
-        <span style="font-size:11px;color:var(--muted);">〜</span>
-        <input type="date" id="st-${f}-${id}" style="border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;">
+        <input type="date" id="sf-${f}-${id}" style="border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;" oninput="onSuspFromChange('sf-${f}-${id}','st-${f}-${id}')">
+        <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" id="sr-rng-${f}-${id}" onchange="toggleSuspRange('st-${f}-${id}',this.checked)">期間
+        </label>
+        <input type="date" id="st-${f}-${id}" style="border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;display:none;">
         <button onclick="addMemberSusp('${f}','${id}')" style="font-size:11px;padding:3px 8px;border:1.5px solid var(--border);border-radius:6px;background:none;cursor:pointer;">＋</button>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px;">終了日省略で1日のみ</div>
     </div>
   </details>`;
 }
@@ -3567,9 +4030,11 @@ function renderSuspensions(f, suspensions) {
   <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">施設行事・祝日など、施設まるごと注文をストップする場合</div>
   <div>${list||'<span style="font-size:12px;color:var(--muted);">なし</span>'}</div>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;">
-    <input type="date" id="susp-from-${f}" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;color:var(--text);background:var(--surface);">
-    <span style="font-size:12px;color:var(--muted);">〜</span>
-    <input type="date" id="susp-to-${f}" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;color:var(--text);background:var(--surface);">
+    <input type="date" id="susp-from-${f}" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;color:var(--text);background:var(--surface);" oninput="onSuspFromChange('susp-from-${f}','susp-to-${f}')">
+    <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;">
+      <input type="checkbox" id="susp-rng-${f}" onchange="toggleSuspRange('susp-to-${f}',this.checked)">期間
+    </label>
+    <input type="date" id="susp-to-${f}" style="border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;color:var(--text);background:var(--surface);display:none;">
     <button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:12px;" onclick="addSuspension('${f}')">＋ 追加</button>
   </div>`;
 }
@@ -3620,7 +4085,8 @@ function reinstateMemember(f, id) {
 
 function addMemberSusp(f, id) {
   const from   = document.getElementById(`sf-${f}-${id}`)?.value;
-  const to     = document.getElementById(`st-${f}-${id}`)?.value || from;
+  const toEl   = document.getElementById(`st-${f}-${id}`);
+  const to     = (toEl?.style.display !== 'none' ? toEl?.value : '') || from;
   const reason = document.getElementById(`sr-${f}-${id}`)?.value || 'その他';
   if (!from) { toast('開始日を入力してください','ng'); return; }
   if (to < from) { toast('終了日は開始日以降にしてください','ng'); return; }
@@ -3642,9 +4108,23 @@ function removeMemberSusp(f, id, idx) {
   toast('一時停止を削除しました', 'ok');
 }
 
+function onSuspFromChange(fromId, toId) {
+  const toEl = document.getElementById(toId);
+  if (toEl && toEl.style.display !== 'none' && !toEl.value) {
+    toEl.value = document.getElementById(fromId)?.value || '';
+  }
+}
+function toggleSuspRange(toId, show) {
+  const el = document.getElementById(toId);
+  if (!el) return;
+  el.style.display = show ? '' : 'none';
+  if (!show) el.value = '';
+}
+
 function addSuspension(f) {
   const from = document.getElementById(`susp-from-${f}`)?.value;
-  const to   = document.getElementById(`susp-to-${f}`)?.value   || from;
+  const toEl = document.getElementById(`susp-to-${f}`);
+  const to   = (toEl?.style.display !== 'none' ? toEl?.value : '') || from;
   if (!from) { toast('開始日を入力してください','ng'); return; }
   if (to < from) { toast('終了日は開始日以降にしてください','ng'); return; }
   const t = getTemplates();
@@ -3671,14 +4151,23 @@ function getActiveDays(f) {
 function saveTemplate(f) {
   const get=k => parseInt(document.getElementById(`s-${f}-${k}`)?.value)||0;
   const ls=get('ls'),lr=get('lr'),ll=get('ll'),ds=get('ds'),dr=get('dr'),dl=get('dl');
+  const servesLunch  = document.getElementById(`srv-lunch-${f}`)?.checked !== false;
+  const servesDinner = document.getElementById(`srv-dinner-${f}`)?.checked !== false;
+  if (!servesLunch && !servesDinner) { toast('昼食・夕食のどちらかは「あり」にしてください','ng'); return; }
   if (ls+lr+ll+ds+dr+dl===0) { toast('注文数を1以上入力してください','ng'); return; }
   const days=getActiveDays(f);
   if (days.length===0) { toast('注文曜日を1日以上選択してください','ng'); return; }
+  const fromDate = document.getElementById(`tmpl-from-${f}`)?.value || getTodayStr();
   const t=getTemplates();
-  t[f]={lunch:{s:ls,r:lr,l:ll},dinner:{s:ds,r:dr,l:dl},days};
+  const snapshot = { lunch:{s:ls,r:lr,l:ll}, dinner:{s:ds,r:dr,l:dl}, days, serves_lunch:servesLunch, serves_dinner:servesDinner, from: fromDate };
+  if (!t[f]) t[f]={};
+  if (!t[f].history) t[f].history=[];
+  t[f].history = t[f].history.filter(e => e.from !== fromDate);
+  t[f].history.push(snapshot);
+  t[f]={...t[f], ...snapshot};
   saveTemplates(t);
   renderSettings();
-  toast(`${f} の定期注文を保存しました ✓`,'ok');
+  toast(`${f} の定期注文を保存しました（${fromDate}〜） ✓`,'ok');
 }
 function confirmReset(f) {
   pendingReset=f;
