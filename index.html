@@ -507,6 +507,27 @@
   .badge-green  { background: #e4efe3; color: #3f6b45; }
   .badge-orange { background: #f8e7d6; color: #9a5524; }
 
+  /* ── 印刷2枚目：受け取りチェック表（画面では非表示、A4縦） ── */
+  #print-checklist { display: none; }
+  body.is-printing #print-checklist:not(:empty) { display: block; break-before: page; page-break-before: always; page: checklist; background: #fff; color: #2b2d33; }
+  @page checklist { size: A4 portrait; margin: 10mm; }
+  .pc-head { display: flex; align-items: flex-end; border-bottom: 2px solid #2b2d33; padding-bottom: 6px; margin-bottom: 8px; font-size: 18pt; font-weight: 700; }
+  .pc-date { margin-left: auto; font-size: 14pt; }
+  .pc-note { font-size: 10pt; color: #6f6a62; margin-bottom: 8px; }
+  .pc-tbl { width: 100%; border-collapse: collapse; font-size: 11pt; }
+  .pc-tbl th { background: #f4f1ec; border: 1px solid #9c968c; padding: 6px; font-size: 10pt; text-align: left; }
+  .pc-tbl td { border: 1px solid #9c968c; padding: 9px 6px; height: 34px; text-align: left; background: #fff; }
+  .pc-tbl td.pc-c { text-align: center; }
+  .pc-name { font-weight: 700; }
+  .pc-qty { font-weight: 700; font-size: 13pt; }
+  .pc-cat { font-size: 8.5pt; color: #6f6a62; font-weight: 400; }
+  .pc-sec { background: #faf8f5; font-weight: 700; color: #6f6a62; font-size: 10pt; padding: 5px 6px !important; height: auto !important; }
+  .pc-meal { border-radius: 999px; padding: 1px 9px; font-size: 10pt; }
+  .pc-lunch { background: #f8ead2; color: #6e4510; }
+  .pc-dinner { background: #ebe6f6; color: #3e3168; }
+  .pc-foot { display: flex; gap: 18px; margin-top: 10px; font-size: 11pt; }
+  .pc-muted { margin-left: auto; color: #6f6a62; font-size: 9pt; }
+
   /* ── 調理用画面の印刷（A4横1枚）：印刷直前に body.is-printing を付け、高さを測って縮小する ── */
   body.is-printing nav, body.is-printing .h-tabs, body.is-printing .admin-lock-bar, body.is-printing .correction-bar,
   body.is-printing .legend, body.is-printing .date-nav, body.is-printing button, body.is-printing input[type="date"],
@@ -771,6 +792,9 @@
       <div id="personal-orders-section"></div>
     </div>
     </div><!-- /admin-sub-admin -->
+
+    <!-- 印刷2枚目：受け取りチェック表（画面には出さない） -->
+    <div id="print-checklist"></div>
 
     <!-- 履歴サブパネル -->
     <div id="admin-sub-history" class="admin-sub-panel" style="display:none;">
@@ -2193,6 +2217,52 @@ function printAdmin() {
   window.print();
 }
 
+// 印刷2枚目：お弁当を取りに来た方の受け取りチェック表
+function renderPickupChecklist(date, merged, poToday) {
+  const el = document.getElementById('print-checklist');
+  if (!el) return;
+  const SZ = { s:'半盛', r:'普通', l:'大盛' };
+  const mealTag = m => m === 'lunch'
+    ? '<span class="pc-meal pc-lunch">昼</span>' : '<span class="pc-meal pc-dinner">夕</span>';
+  const rows = [], tot = { lunch: 0, dinner: 0 };
+  FACILITIES.forEach(f => {
+    const o = merged[f]; if (!o) return;
+    ['lunch','dinner'].forEach(meal => {
+      const v = o[meal] || {};
+      const s = v.s||0, r = v.r||0, l = v.l||0, t = v.t||0;
+      let detail, qty;
+      if (!o.irregular && isTapper(f, meal)) { qty = s+r+l+t; detail = '🥡 タッパー'; }
+      else {
+        qty = s+r+l+t;
+        detail = [['s',s],['r',r],['l',l]].filter(([,n])=>n).map(([k,n])=>`${SZ[k]}${n}`).join('・');
+        if (t) detail += (detail ? '・' : '') + `🥡 タッパー${t}`;
+      }
+      if (!qty) return;
+      tot[meal] += qty;
+      rows.push(`<tr><td class="pc-name">${esc(f)}</td><td class="pc-c">${mealTag(meal)}</td><td>${detail}</td><td class="pc-c pc-qty">${qty}</td><td></td></tr>`);
+    });
+  });
+  const poRows = [];
+  (poToday || []).forEach(p => {
+    ['lunch','dinner'].forEach(meal => {
+      if (!p[`serves_${meal}`]) return;
+      tot[meal]++;
+      const size = p.mealType === 'sides' ? 'おかずのみ' : SZ[(meal==='lunch' ? p.lunchSize : p.dinnerSize) || 'r'];
+      const cat = p.category === 'staff' ? '職員' : 'メンバー';
+      poRows.push(`<tr><td class="pc-name">${esc(poDisplayName(p.id))} <span class="pc-cat">${cat}</span></td><td class="pc-c">${mealTag(meal)}</td><td>${size}</td><td class="pc-c pc-qty">1</td><td></td></tr>`);
+    });
+  });
+  if (!rows.length && !poRows.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="pc-head"><span>🍱 お弁当 受け取りチェック表</span><span class="pc-date">${fmtDate(date)}</span></div>
+    <div class="pc-note">受け取った時に数を確かめて、サインをお願いします。</div>
+    <table class="pc-tbl">
+      <thead><tr><th style="width:28%;">事業所・お名前</th><th style="width:9%;">昼・夕</th><th>サイズ</th><th style="width:9%;">数量</th><th style="width:24%;">受け取り（サイン）</th></tr></thead>
+      <tbody>${rows.join('')}${poRows.length ? `<tr><td colspan="5" class="pc-sec">👤 個人注文</td></tr>${poRows.join('')}` : ''}</tbody>
+    </table>
+    <div class="pc-foot"><span>昼 合計 <b>${tot.lunch}</b> 食</span><span>夕 合計 <b>${tot.dinner}</b> 食</span><span class="pc-muted">※ 注文がない事業所は載せていません</span></div>`;
+}
+
 // 調理用画面の印刷：A4横（余白8mm）の1枚に収まるよう縮小する
 const PRINT_W = 1060, PRINT_H = 715; // A4横の印刷範囲（CSSピクセル）
 function fitCookingPrint() {
@@ -2206,11 +2276,21 @@ function fitCookingPrint() {
   const s = Math.min(1, PRINT_H / panel.scrollHeight);
   panel.style.zoom = s;
   panel.style.width = (PRINT_W / s) + 'px';
+  // 2枚目（A4縦）も1枚に収める
+  const pc = document.getElementById('print-checklist');
+  if (pc && pc.innerHTML) {
+    const CW = 700, CH = 1020;
+    pc.style.zoom = 1; pc.style.width = CW + 'px';
+    const s2 = Math.min(1, CH / pc.scrollHeight);
+    pc.style.zoom = s2; pc.style.width = (CW / s2) + 'px';
+  }
 }
 function endCookingPrint() {
   document.body.classList.remove('is-printing');
   const panel = document.getElementById('admin-sub-admin');
   if (panel) { panel.style.zoom = ''; panel.style.width = ''; }
+  const pc = document.getElementById('print-checklist');
+  if (pc) { pc.style.zoom = ''; pc.style.width = ''; }
 }
 window.addEventListener('beforeprint', fitCookingPrint);
 window.addEventListener('afterprint', endCookingPrint);
@@ -3155,6 +3235,8 @@ function renderAdmin() {
       <td class="td-d">${dS}</td><td class="td-d">${dR}</td><td class="td-d">${dL}</td><td class="td-ds">${tD}${sidesBadge(dSides)}</td>
       <td></td>
     </tr></tfoot>`;
+
+  renderPickupChecklist(date, merged, poToday);
 
   // その日に注文がない食事の列は隠す（両方0なら両方表示）
   const tblEl = document.getElementById('admin-tbl');
