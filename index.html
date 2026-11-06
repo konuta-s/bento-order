@@ -507,8 +507,45 @@
   .badge-green  { background: #e4efe3; color: #3f6b45; }
   .badge-orange { background: #f8e7d6; color: #9a5524; }
 
+  /* ── 印刷1枚目：調理表（画面では非表示。印刷時は画面の調理用パネルの代わりに出す） ── */
+  #print-cook { display: none; }
+  body.is-printing.pk-on #admin-sub-admin { display: none !important; }
+  body.is-printing #print-cook:not(:empty) { display: block; background: #fff; color: #2b2d33; }
+  .pk-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .pk-title { font-size: 22px; font-weight: 700; white-space: nowrap; }
+  .pk-title span { font-size: 18px; margin-left: 6px; }
+  .pk-totals { display: flex; gap: 8px; margin-left: auto; }
+  .pk-tb { border-radius: 10px; padding: 4px 12px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; }
+  .pk-tb b { font-size: 26px; margin: 0 3px 0 8px; }
+  .pk-tb.pk-lunch { background: #b07424; } .pk-tb.pk-dinner { background: #5b4b92; } .pk-tb.pk-total { background: #2f4f7a; }
+  .pk-notes { border: 2px solid #ecc9c2; background: #fbf1ef; border-radius: 10px; padding: 5px 10px; margin-bottom: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px 16px; align-content: start; min-height: 96px; }
+  .pk-tbl tbody td { height: 50px; }
+  .pk-nh { grid-column: 1 / -1; font-weight: 700; color: #9e3a2c; font-size: 13px; }
+  .pk-nt { font-size: 14px; }
+  .pk-nt .pk-al { color: #9e3a2c; font-weight: 700; }
+  .pk-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .pk-tbl th, .pk-tbl td { border: 1.5px solid #8d877d; text-align: center; padding: 3px 4px; }
+  .pk-fh { background: #3e4757; color: #fff; font-size: 14px; width: 17%; }
+  .pk-mh { color: #fff; font-size: 16px; padding: 4px; }
+  .pk-mh.pk-lunch { background: #8f5c17; } .pk-mh.pk-dinner { background: #4f3f8c; }
+  .pk-sh { font-size: 13px; font-weight: 700; }
+  .pk-lunch-s { background: #fdf6ea; color: #6e4510; } .pk-lunch-c { background: #f3dfbb; color: #6e4510; }
+  .pk-dinner-s { background: #f7f5fc; color: #3e3168; } .pk-dinner-c { background: #ddd5f0; color: #3e3168; }
+  .pk-name { text-align: left !important; font-size: 17px; font-weight: 700; padding-left: 8px !important; word-break: keep-all; }
+  .pk-n { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .pk-sum { font-size: 26px; font-weight: 800; }
+  .pk-zero { color: #c9c2b6; font-weight: 400; }
+  .pk-none .pk-name { color: #a39b8f; }
+  .pk-nonetx { font-size: 11px; font-weight: 400; margin-left: 6px; }
+  .pk-tag { font-size: 12px; line-height: 1.2; margin-top: 1px; font-weight: 700; }
+  .pk-tag.pk-al { color: #b8473a; } .pk-tag.pk-kz { color: #5b4b92; }
+  .pk-note { font-size: 11px; font-weight: 700; color: #3b6a8c; }
+  .pk-tbl tfoot td { background: #2f4f7a; color: #fff; font-size: 18px; font-weight: 700; }
+  .pk-tbl tfoot .pk-sum { font-size: 22px; }
+
   /* ── 印刷2枚目：受け取りチェック表（画面では非表示、A4縦） ── */
-  #print-checklist { display: none; }
+  #print-checklist, #print-personal { display: none; }
+  body.is-printing #print-personal:not(:empty),
   body.is-printing #print-checklist:not(:empty) { display: block; break-before: page; page-break-before: always; page: checklist; background: #fff; color: #2b2d33; }
   @page checklist { size: A4 portrait; margin: 10mm; }
   .pc-head { display: flex; align-items: flex-end; border-bottom: 2px solid #2b2d33; padding-bottom: 6px; margin-bottom: 8px; font-size: 18pt; font-weight: 700; }
@@ -527,6 +564,11 @@
   .pc-dinner { background: #ebe6f6; color: #3e3168; }
   .pc-foot { display: flex; gap: 18px; margin-top: 10px; font-size: 11pt; }
   .pc-muted { margin-left: auto; color: #6f6a62; font-size: 9pt; }
+  .pp-sum { font-size: 12pt; margin-bottom: 10px; }
+  .pp-name { font-size: 15pt; }
+  .pp-size { font-size: 15pt; font-weight: 700; }
+  .pp-lunch { background: #fdf6ea !important; color: #6e4510; }
+  .pp-dinner { background: #f7f5fc !important; color: #3e3168; }
 
   /* ── 調理用画面の印刷（A4横1枚）：印刷直前に body.is-printing を付け、高さを測って縮小する ── */
   body.is-printing nav, body.is-printing .h-tabs, body.is-printing .admin-lock-bar, body.is-printing .correction-bar,
@@ -762,7 +804,7 @@
       <div class="admin-lock-bar">
         🔒 <strong>管理者モード</strong>　閲覧中
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-ghost btn-sm" onclick="printAdmin()">🖨️ 印刷</button>
+          <button class="btn btn-ghost btn-sm" onclick="printAdmin()" title="調理表・個人注文・受け取りチェック表を印刷します。印刷画面で「両面印刷」はオフにしてください">🖨️ 印刷<span style="font-size:11px;font-weight:400;margin-left:4px;opacity:.8;">（片面で）</span></button>
           <button class="btn btn-ghost btn-sm" onclick="openPinChange()">🔑 暗証番号変更</button>
           <button class="btn btn-ghost btn-sm" onclick="lockAdmin()">🔒 ロック</button>
         </div>
@@ -793,7 +835,11 @@
     </div>
     </div><!-- /admin-sub-admin -->
 
-    <!-- 印刷2枚目：受け取りチェック表（画面には出さない） -->
+    <!-- 印刷1枚目：調理表（画面には出さない） -->
+    <div id="print-cook"></div>
+    <!-- 印刷2枚目：個人注文の詳細（個人注文がある日だけ。画面には出さない） -->
+    <div id="print-personal"></div>
+    <!-- 印刷3枚目：受け取りチェック表（画面には出さない） -->
     <div id="print-checklist"></div>
 
     <!-- 履歴サブパネル -->
@@ -2214,10 +2260,132 @@ function removeFacility(idx) {
 
 function printAdmin() {
   document.getElementById('print-date-lbl').textContent = fmtDate(toDateStr(adminDay));
-  window.print();
+  toast('印刷画面で「両面印刷」をオフにしてください（一度オフにすると次回から覚えています）', 'ok');
+  setTimeout(() => window.print(), 300);
 }
 
-// 印刷2枚目：お弁当を取りに来た方の受け取りチェック表
+// サイズ欄の下の印（刻み・アレルギー）。調理画面と同じ数え方
+function cookTags(o, meal, size) {
+  const cnt = { ...((o._tags || {})[meal]?.[size] || {}) };
+  const si = o.specialItems || {};
+  const fk = si.kizami?.enabled ? si.kizami : null;
+  const fkn = parseInt(fk?.[meal]?.[size]) || 0;
+  if (fkn) cnt['刻み'] = (cnt['刻み'] || 0) + fkn;
+  const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
+  aList.forEach(a => {
+    const sizes = meal === 'lunch' ? (a.lunch || { s:a.s||0, r:a.r||0, l:a.l||0 }) : (a.dinner || {});
+    const n = parseInt(sizes[size]) || 0;
+    if (!n) return;
+    const key = (a.kizami ? '刻+' : '') + (a.detail || 'アレルギー');
+    cnt[key] = (cnt[key] || 0) + n;
+  });
+  return cnt;
+}
+
+// 印刷1枚目：調理表（作るのに必要な情報だけ。紙いっぱいに拡大して印刷）
+function renderPrintCook(date, merged, poToday) {
+  const el = document.getElementById('print-cook');
+  if (!el) return;
+  const SZ = ['s','r','l'], SZL = { s:'半盛', r:'普通', l:'大盛' };
+  // 毎日同じ並び・同じ行数にする（注文がない事業所も行を出す）
+  const rows = [];
+  FACILITIES.forEach(f => rows.push({ name: f, o: merged[f] || { lunch:{}, dinner:{} }, f, none: !merged[f] }));
+  // 個人注文は1行にまとめる
+  const po = { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0}, sidesL:0, sidesD:0 };
+  (poToday || []).forEach(p => {
+    if (p.serves_lunch)  { if (p.mealType==='sides') po.sidesL++; else po.lunch[p.lunchSize||'r']++; }
+    if (p.serves_dinner) { if (p.mealType==='sides') po.sidesD++; else po.dinner[p.dinnerSize||'r']++; }
+  });
+  rows.push({ name: `👤 個人注文（${(poToday || []).length}名）`, o: { lunch: po.lunch, dinner: po.dinner }, sides: { lunch: po.sidesL, dinner: po.sidesD } });
+
+  const mealSum = (o, m) => SZ.reduce((a,k)=>a+(o[m]?.[k]||0),0) + (o[m]?.t||0);
+  const tot = { lunch:0, dinner:0 }, colTot = { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0} };
+  rows.forEach(r => ['lunch','dinner'].forEach(m => {
+    tot[m] += mealSum(r.o, m) + (r.sides?.[m] || 0);
+    SZ.forEach(k => colTot[m][k] += r.o[m]?.[k] || 0);
+  }));
+  const meals = ['lunch','dinner']; // 列は毎日固定
+  if (!tot.lunch && !tot.dinner) { el.innerHTML = ''; return; }
+
+  const ML = { lunch: '☀️ 昼食', dinner: '🌙 夕食' };
+  const tagHtml = (cnt) => Object.entries(cnt).map(([d,n]) =>
+    `<div class="pk-tag ${d==='刻み'?'pk-kz':'pk-al'}">${esc(d.length > 8 ? d.slice(0, 8) + '…' : d)}×${n}</div>`).join('');
+  const head1 = meals.map(m => `<th colspan="4" class="pk-mh pk-${m}">${ML[m]}</th>`).join('');
+  const head2 = meals.map(m => SZ.map(k=>`<th class="pk-sh pk-${m}-s">${SZL[k]}</th>`).join('') + `<th class="pk-sh pk-${m}-c">計</th>`).join('');
+  const body = rows.map(r => {
+    const cells = meals.map(m => {
+      const tap = r.f && !r.o.irregular && isTapper(r.f, m);
+      const sizeCells = SZ.map(k => {
+        const n = r.o[m]?.[k] || 0;
+        const tags = r.f ? tagHtml(cookTags(r.o, m, k)) : '';
+        return `<td class="pk-n pk-${m}-s">${n || '<span class="pk-zero">−</span>'}${tags}</td>`;
+      }).join('');
+      const sum = mealSum(r.o, m) + (r.sides?.[m] || 0);
+      const extra = (tap && sum ? '<div class="pk-note">🥡 タッパー</div>' : '')
+        + ((r.o[m]?.t) ? `<div class="pk-note">🥡×${r.o[m].t}</div>` : '')
+        + ((r.sides?.[m]) ? `<div class="pk-note">おかずのみ×${r.sides[m]}</div>` : '');
+      return sizeCells + `<td class="pk-n pk-sum pk-${m}-c">${sum || '<span class="pk-zero">−</span>'}${extra}</td>`;
+    }).join('');
+    return `<tr${r.none ? ' class="pk-none"' : ''}><td class="pk-name">${esc(r.name)}${r.none ? '<span class="pk-nonetx">注文なし</span>' : ''}</td>${cells}</tr>`;
+  }).join('');
+  const foot = meals.map(m => SZ.map(k=>`<td>${colTot[m][k]||'−'}</td>`).join('') + `<td class="pk-sum">${tot[m]}</td>`).join('');
+
+  // 注意事項（アレルギー・刻み・その他）を短く
+  const notes = [];
+  rows.forEach(r => {
+    if (!r.f) return;
+    const si = r.o.specialItems || {};
+    const aList = si.allergyList || (si.allergy?.enabled ? [si.allergy] : []);
+    const parts = [];
+    (r.o._memberAllergies || []).forEach(a => parts.push(`<span class="pk-al">${esc(a.name.split(/\s+/)[0])}：${esc(a.detail)}</span>`));
+    aList.forEach(a => parts.push(`<span class="pk-al">${a.kizami?'刻+':''}${esc(a.detail||'アレルギー')}</span>`));
+    if (si.other?.enabled && si.other.detail) parts.push(`<span>${esc(si.other.detail)}</span>`);
+    if (parts.length) notes.push(`<div class="pk-nt"><b>${esc(r.f)}</b>　${parts.join('　')}</div>`);
+  });
+
+  el.innerHTML = `
+    <div class="pk-top">
+      <div class="pk-title">🍱 調理表　<span>${fmtDate(date)}</span></div>
+      <div class="pk-totals">${meals.map(m=>`<div class="pk-tb pk-${m}">${ML[m]}<b>${tot[m]}</b>食</div>`).join('')}<div class="pk-tb pk-total">🍱 総合計<b>${tot.lunch+tot.dinner}</b>食</div></div>
+    </div>
+    <div class="pk-notes"><div class="pk-nh">⚠️ アレルギー・特記</div>${notes.length ? notes.join('') : '<div class="pk-nt" style="color:#a39b8f;">なし</div>'}</div>
+    <table class="pk-tbl">
+      <thead><tr><th rowspan="2" class="pk-fh">事業所</th>${head1}</tr><tr>${head2}</tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><td class="pk-name">合計</td>${foot}</tr></tfoot>
+    </table>`;
+}
+
+// 印刷2枚目：個人注文の詳細（誰が・昼夕・サイズ）
+function renderPrintPersonal(date, poToday) {
+  const el = document.getElementById('print-personal');
+  if (!el) return;
+  const list = (poToday || []).filter(p => p.serves_lunch || p.serves_dinner);
+  if (!list.length) { el.innerHTML = ''; return; }
+  const SZ = { s:'半盛', r:'普通', l:'大盛' };
+  const cell = (p, meal) => {
+    if (!p[`serves_${meal}`]) return '<td class="pc-c"><span class="pk-zero">−</span></td>';
+    const txt = p.mealType === 'sides' ? 'おかずのみ' : SZ[(meal==='lunch' ? p.lunchSize : p.dinnerSize) || 'r'];
+    return `<td class="pc-c pp-size pp-${meal}">${txt}</td>`;
+  };
+  const sorted = [...list].sort((a,b) => (a.category===b.category ? 0 : a.category==='staff' ? 1 : -1) || poDisplayName(a.id).localeCompare(poDisplayName(b.id),'ja'));
+  const cnt = { lunch:{}, dinner:{} };
+  sorted.forEach(p => ['lunch','dinner'].forEach(m => {
+    if (!p[`serves_${m}`]) return;
+    const k = p.mealType === 'sides' ? 'おかずのみ' : SZ[(m==='lunch' ? p.lunchSize : p.dinnerSize) || 'r'];
+    cnt[m][k] = (cnt[m][k] || 0) + 1;
+  }));
+  const sumTxt = m => Object.entries(cnt[m]).map(([k,n]) => `${k}${n}`).join('・') || '−';
+  el.innerHTML = `
+    <div class="pc-head"><span>👤 個人注文 一覧</span><span class="pc-date">${fmtDate(date)}</span></div>
+    <div class="pp-sum"><span class="pc-meal pc-lunch">昼</span> ${sumTxt('lunch')}　　<span class="pc-meal pc-dinner">夕</span> ${sumTxt('dinner')}　　<b>計 ${list.reduce((a,p)=>a+(p.serves_lunch?1:0)+(p.serves_dinner?1:0),0)} 食</b></div>
+    <table class="pc-tbl">
+      <thead><tr><th style="width:40%;">お名前</th><th style="width:16%;">区分</th><th class="pc-c">☀️ 昼食</th><th class="pc-c">🌙 夕食</th></tr></thead>
+      <tbody>${sorted.map(p => `<tr><td class="pc-name pp-name">${esc(poDisplayName(p.id))}</td><td>${p.category==='staff'?'職員':'メンバー'}</td>${cell(p,'lunch')}${cell(p,'dinner')}</tr>`).join('')}</tbody>
+    </table>`;
+}
+
+// 印刷3枚目：お弁当を取りに来た方の受け取りチェック表
 function renderPickupChecklist(date, merged, poToday) {
   const el = document.getElementById('print-checklist');
   if (!el) return;
@@ -2271,26 +2439,30 @@ function fitCookingPrint() {
   if (!isCook) return;
   document.getElementById('print-date-lbl').textContent = fmtDate(toDateStr(adminDay));
   document.body.classList.add('is-printing');
-  panel.style.zoom = 1;
-  panel.style.width = PRINT_W + 'px';
-  const s = Math.min(1, PRINT_H / panel.scrollHeight);
-  panel.style.zoom = s;
-  panel.style.width = (PRINT_W / s) + 'px';
-  // 2枚目（A4縦）も1枚に収める
-  const pc = document.getElementById('print-checklist');
-  if (pc && pc.innerHTML) {
-    const CW = 700, CH = 1020;
-    pc.style.zoom = 1; pc.style.width = CW + 'px';
-    const s2 = Math.min(1, CH / pc.scrollHeight);
-    pc.style.zoom = s2; pc.style.width = (CW / s2) + 'px';
+  // 注文がない日は印刷用の調理表が空なので、画面のパネル（「注文なし」表示）をそのまま印刷する
+  document.body.classList.toggle('pk-on', !!document.getElementById('print-cook')?.innerHTML);
+  // 1枚目（A4横）・2枚目（A4縦）とも、紙いっぱいまで拡大／はみ出す時は縮小
+  fitToPage(document.getElementById('print-cook'),      PRINT_W, PRINT_H, 2.2);
+  fitToPage(document.getElementById('print-personal'),  700, 1020, 1.4);
+  fitToPage(document.getElementById('print-checklist'), 700, 1020, 1.4);
+}
+// el を幅W×高さHの紙に収まる最大の倍率で表示（拡大は maxZoom まで）
+function fitToPage(el, W, H, maxZoom) {
+  if (!el || !el.innerHTML) return;
+  let s = 1;
+  for (let i = 0; i < 4; i++) {
+    el.style.zoom = s; el.style.width = (W / s) + 'px';
+    const h = el.getBoundingClientRect().height;
+    s = Math.min(maxZoom, s * H / h);
   }
+  s = Math.floor(s * 100) / 100;
+  el.style.zoom = s; el.style.width = (W / s) + 'px';
+  const h2 = el.getBoundingClientRect().height;
+  if (h2 > H) { s = s * H / h2 * 0.98; el.style.zoom = s; el.style.width = (W / s) + 'px'; }
 }
 function endCookingPrint() {
-  document.body.classList.remove('is-printing');
-  const panel = document.getElementById('admin-sub-admin');
-  if (panel) { panel.style.zoom = ''; panel.style.width = ''; }
-  const pc = document.getElementById('print-checklist');
-  if (pc) { pc.style.zoom = ''; pc.style.width = ''; }
+  document.body.classList.remove('is-printing', 'pk-on');
+  ['print-cook','print-personal','print-checklist'].forEach(id => { const e = document.getElementById(id); if (e) { e.style.zoom = ''; e.style.width = ''; } });
 }
 window.addEventListener('beforeprint', fitCookingPrint);
 window.addEventListener('afterprint', endCookingPrint);
@@ -3237,6 +3409,8 @@ function renderAdmin() {
     </tr></tfoot>`;
 
   renderPickupChecklist(date, merged, poToday);
+  renderPrintCook(date, merged, poToday);
+  renderPrintPersonal(date, poToday);
 
   // その日に注文がない食事の列は隠す（両方0なら両方表示）
   const tblEl = document.getElementById('admin-tbl');
