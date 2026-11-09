@@ -517,6 +517,23 @@
   .pk-totals { display: flex; gap: 8px; margin-left: auto; }
   .pk-tb { border-radius: 10px; padding: 4px 12px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; }
   .pk-tb b { font-size: 26px; margin: 0 3px 0 8px; }
+  .pk-sum-grid { display: grid; grid-template-columns: 1fr 1fr 0.8fr; grid-template-rows: auto auto; gap: 6px; margin-bottom: 8px; }
+  .pk-sub-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pk-sb { border-radius: 10px; padding: 4px 10px; }
+  .pk-sb-total { grid-column: 3; grid-row: 1 / 3; background: #2f4f7a; color: #fff; display: flex; flex-direction: column; justify-content: center; }
+  .pk-sb-lunch { background: #b07424; color: #fff; } .pk-sb-dinner { background: #5b4b92; color: #fff; }
+  .pk-sb-lunch.pk-sb-sub { background: #fdf6ea; color: #6e4510; border: 1.5px solid #e6cfa5; }
+  .pk-sb-dinner.pk-sb-sub { background: #f7f5fc; color: #3e3168; border: 1.5px solid #cfc6e8; }
+  .pk-sl { font-size: 13px; font-weight: 700; }
+  .pk-sv { font-size: 30px; font-weight: 800; line-height: 1.1; }
+  .pk-sv span { font-size: 13px; margin-left: 3px; font-weight: 700; }
+  .pk-sb-sub .pk-sv { font-size: 24px; }
+  .pk-ss { font-size: 12px; font-weight: 700; opacity: .9; }
+  .pk-sb-total .pk-sv { font-size: 40px; }
+  /* 0の欄：数字は同じ濃さのまま、背景だけ淡く */
+  .pk-sb-lunch.pk-sb-none:not(.pk-sb-sub) { background: #f3dfbb; color: #6e4510; }
+  .pk-sb-dinner.pk-sb-none:not(.pk-sb-sub) { background: #ddd5f0; color: #3e3168; }
+  .pk-sb-sub.pk-sb-none { background: #fff; border-style: dashed; }
   .pk-tb.pk-lunch { background: #b07424; } .pk-tb.pk-dinner { background: #5b4b92; } .pk-tb.pk-total { background: #2f4f7a; }
   .pk-notes { border: 2px solid #ecc9c2; background: #fbf1ef; border-radius: 10px; padding: 5px 10px; margin-bottom: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px 16px; align-content: start; min-height: 96px; }
   .pk-tbl tbody td { height: 50px; }
@@ -2370,7 +2387,7 @@ function cookTags(o, meal, size) {
 }
 
 // 印刷1枚目：調理表（作るのに必要な情報だけ。紙いっぱいに拡大して印刷）
-function renderPrintCook(date, merged, poToday) {
+function renderPrintCook(date, merged, poToday, sm) {
   const el = document.getElementById('print-cook');
   if (!el) return;
   const SZ = ['s','r','l'], SZL = { s:'半盛', r:'普通', l:'大盛' };
@@ -2430,10 +2447,23 @@ function renderPrintCook(date, merged, poToday) {
     if (parts.length) notes.push(`<div class="pk-nt"><b>${esc(r.f)}</b>　${parts.join('　')}</div>`);
   });
 
+  // 画面（スマホ）と同じ並び：昼合計・夕合計・総合計／その下に弁当・タッパーの内訳
+  const s = sm || { tL: tot.lunch, tD: tot.dinner, lb:{t:0,s:0,r:0,l:0}, db:{t:0,s:0,r:0,l:0}, ltT:0, dtT:0, lSides:0, dSides:0 };
+  const z = n => n || 0;
+  const nz = n => n ? '' : ' pk-sb-none'; // 0の欄は背景だけ淡く（数字は同じ濃さ）
+  const detail = (m, b, tap, sides) => `
+    <div class="pk-sb pk-sb-${m} pk-sb-sub${nz(b.t)}"><div class="pk-sl">🍱 ${m==='lunch'?'昼':'夕'} お弁当</div><div class="pk-sv">${z(b.t)}<span>食</span></div><div class="pk-ss">${b.t ? `半 ${b.s}　普 ${b.r}　大 ${b.l}` : 'なし'}</div></div>
+    <div class="pk-sb pk-sb-${m} pk-sb-sub${nz(tap)}"><div class="pk-sl">🥡 ${m==='lunch'?'昼':'夕'} タッパー</div><div class="pk-sv">${z(tap)}<span>個</span></div><div class="pk-ss">${sides ? `おかずのみ ${sides}` : (tap ? '' : 'なし')}</div></div>`;
   el.innerHTML = `
     <div class="pk-top">
       <div class="pk-title">🍱 調理表　<span>${fmtDate(date)}</span></div>
-      <div class="pk-totals">${meals.map(m=>`<div class="pk-tb pk-${m}">${ML[m]}<b>${tot[m]}</b>食</div>`).join('')}<div class="pk-tb pk-total">🍱 総合計<b>${tot.lunch+tot.dinner}</b>食</div></div>
+    </div>
+    <div class="pk-sum-grid">
+      <div class="pk-sb pk-sb-lunch${s.tL?'':' pk-sb-none'}"><div class="pk-sl">☀️ 昼食　合計</div><div class="pk-sv">${z(s.tL)}<span>食</span></div></div>
+      <div class="pk-sb pk-sb-dinner${s.tD?'':' pk-sb-none'}"><div class="pk-sl">🌙 夕食　合計</div><div class="pk-sv">${z(s.tD)}<span>食</span></div></div>
+      <div class="pk-sb pk-sb-total"><div class="pk-sl">🍱 総合計</div><div class="pk-sv">${s.tL+s.tD}<span>食</span></div><div class="pk-ss">昼 ${s.tL} ／ 夕 ${s.tD}</div></div>
+      <div class="pk-sub-row">${detail('lunch', s.lb, s.ltT, s.lSides)}</div>
+      <div class="pk-sub-row">${detail('dinner', s.db, s.dtT, s.dSides)}</div>
     </div>
     <div class="pk-notes"><div class="pk-nh">⚠️ アレルギー・特記</div>${notes.length ? notes.join('') : '<div class="pk-nt" style="color:#a39b8f;">なし</div>'}</div>
     <table class="pk-tbl">
@@ -3500,7 +3530,7 @@ function renderAdmin() {
     </tr></tfoot>`;
 
   renderPickupChecklist(date, merged, poToday);
-  renderPrintCook(date, merged, poToday);
+  renderPrintCook(date, merged, poToday, { tL, tD, lb:{t:lbTotal,s:lbS,r:lbR,l:lbL}, db:{t:dbTotal,s:dbS,r:dbR,l:dbL}, ltT, dtT, lSides, dSides });
   renderPrintPersonal(date, poToday);
 
   // その日に注文がない食事の列は隠す（両方0なら両方表示）
