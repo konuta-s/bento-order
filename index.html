@@ -685,6 +685,7 @@
           <div class="size-item" id="si-ll"><div class="size-label">大盛<span class="size-price" id="price-ll"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('ll',-1)">−</button><input class="qty-num" type="number" id="ll" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('ll',1)">＋</button></div></div>
           <div class="size-item" id="si-ltap" style="display:none;border:2px dashed #c98a2e;background:#fdf8ee;"><div class="size-label">🥡 タッパー<span class="size-price" id="price-ltap"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('ltap',-1)">−</button><input class="qty-num" type="number" id="ltap" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('ltap',1)">＋</button></div></div>
         </div>
+        <div class="trial-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;font-weight:600;color:#9a5524;">🔰 うち体験利用<input class="qty-num" type="number" id="ltr" value="0" min="0" style="width:64px;font-size:16px;">人<span style="font-size:11px;font-weight:400;color:#6f6a62;">（上の数の中に含めて入力）</span></div>
       </div>
 
       <div class="meal-section" id="meal-dinner">
@@ -699,6 +700,7 @@
           <div class="size-item" id="si-dl"><div class="size-label">大盛<span class="size-price" id="price-dl"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('dl',-1)">−</button><input class="qty-num" type="number" id="dl" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('dl',1)">＋</button></div></div>
           <div class="size-item" id="si-dtap" style="display:none;border:2px dashed #c98a2e;background:#fdf8ee;"><div class="size-label">🥡 タッパー<span class="size-price" id="price-dtap"></span></div><div class="qty-ctrl"><button class="qty-btn" onclick="adj('dtap',-1)">−</button><input class="qty-num" type="number" id="dtap" value="0" min="0" oninput="calcTotals()"><button class="qty-btn" onclick="adj('dtap',1)">＋</button></div></div>
         </div>
+        <div class="trial-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;font-weight:600;color:#9a5524;">🔰 うち体験利用<input class="qty-num" type="number" id="dtr" value="0" min="0" style="width:64px;font-size:16px;">人<span style="font-size:11px;font-weight:400;color:#6f6a62;">（上の数の中に含めて入力）</span></div>
       </div>
 
       <div class="form-group">
@@ -1722,9 +1724,15 @@
         <div class="modal-size-item"><div class="modal-size-lbl">大盛</div><div class="modal-qty-ctrl"><button class="modal-qty-btn" onclick="madj('mc-dl',-1)">−</button><input class="modal-qty-num" type="number" id="mc-dl" value="0" min="0" oninput="mcCalc()"><button class="modal-qty-btn" onclick="madj('mc-dl',1)">＋</button></div></div>
       </div>
     </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:4px 0 14px;font-size:13px;font-weight:600;color:#9a5524;">
+      <span>🔰 うち体験利用</span>
+      <span>☀️ 昼 <input class="modal-qty-num" type="number" id="mc-ltr" value="0" min="0" style="width:60px;"> 人</span>
+      <span>🌙 夕 <input class="modal-qty-num" type="number" id="mc-dtr" value="0" min="0" style="width:60px;"> 人</span>
+    </div>
     <div class="form-group">
-      <label>アレルギー・特記事項</label>
-      <textarea id="mc-allergy" placeholder="アレルギーや特記事項があれば入力"></textarea>
+      <label>アレルギー・特記事項（表示のみ）</label>
+      <textarea id="mc-allergy" readonly style="background:#f4f1ec;color:#6f6a62;" placeholder="なし"></textarea>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">ここでは変更できません。訂正で変わるのは数と体験利用だけで、アレルギー・刻み・メンバーのキャンセルはそのまま残ります。</div>
     </div>
     <div class="modal-btns">
       <button class="btn btn-primary" onclick="saveCorrection()">この内容で訂正する</button>
@@ -2258,10 +2266,89 @@ function removeFacility(idx) {
   renderSettings();
 }
 
-function printAdmin() {
-  document.getElementById('print-date-lbl').textContent = fmtDate(toDateStr(adminDay));
-  toast('印刷画面で「両面印刷」をオフにしてください（一度オフにすると次回から覚えています）', 'ok');
-  setTimeout(() => window.print(), 300);
+// 印刷：どの端末でも同じ見た目になるよう、PDFを作ってから開く／共有する
+function loadScriptOnce(src) {
+  return new Promise((ok, ng) => {
+    if (document.querySelector(`script[src="${src}"]`)) return ok();
+    const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ng;
+    document.head.appendChild(s);
+  });
+}
+let _printPdf = null;
+async function printAdmin() {
+  const dateStr = toDateStr(adminDay);
+  document.getElementById('print-date-lbl').textContent = fmtDate(dateStr);
+  const ov = showPrintOverlay('<div style="font-size:15px;font-weight:700;">印刷用のPDFを作っています…</div>');
+  try {
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const pkOn = !!document.getElementById('print-cook')?.innerHTML;
+    document.body.classList.add('is-printing');
+    document.body.classList.toggle('pk-on', pkOn);
+    // [要素, 向き, 余白mm, 撮影時の幅px]
+    const pages = [
+      [pkOn ? document.getElementById('print-cook') : document.getElementById('admin-sub-admin'), 'landscape', 8, PRINT_W],
+      [document.getElementById('print-personal'), 'portrait', 10, 700],
+      [document.getElementById('print-checklist'), 'portrait', 10, 700],
+    ].filter(([el]) => el && el.innerHTML.trim());
+    const { jsPDF } = window.jspdf;
+    let pdf = null;
+    for (const [el, ori, mg, w] of pages) {
+      const prevW = el.style.width; el.style.width = w + 'px';
+      const cv = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', windowWidth: w + 40 });
+      el.style.width = prevW;
+      if (!pdf) pdf = new jsPDF({ orientation: ori, unit: 'mm', format: 'a4' });
+      else pdf.addPage('a4', ori);
+      const pw = ori === 'landscape' ? 297 : 210, ph = ori === 'landscape' ? 210 : 297;
+      const aw = pw - mg*2, ah = ph - mg*2;
+      const r = Math.min(aw / cv.width, ah / cv.height);
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', mg + (aw - cv.width*r)/2, mg, cv.width*r, cv.height*r);
+    }
+    endCookingPrint();
+    if (!pdf) { ov.remove(); toast('印刷する内容がありません', 'err'); return; }
+    const blob = pdf.output('blob');
+    const name = `調理表_${dateStr}.pdf`;
+    if (_printPdf) URL.revokeObjectURL(_printPdf.url);
+    _printPdf = { blob, name, url: URL.createObjectURL(blob) };
+    const canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], name, { type: 'application/pdf' })] }));
+    ov.querySelector('.po-box').innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px;">印刷用のPDFができました（${pages.length}枚）</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">PC・スマホ・リコーのアプリで同じ見た目になります。<br>印刷するときは「片面」にしてください。</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-primary" onclick="openPrintPdf()">📄 PDFを開いて印刷する</button>
+        ${canShare ? `<button class="btn btn-ghost" onclick="sharePrintPdf()">📤 共有する（リコーのアプリなど）</button>` : ''}
+        <button class="btn btn-ghost" onclick="downloadPrintPdf()">⬇ PDFを保存する</button>
+        <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="this.closest('.po-ov').remove()">閉じる</button>
+      </div>`;
+  } catch (e) {
+    endCookingPrint(); ov.remove();
+    console.error(e);
+    toast('PDFを作れませんでした。通常の印刷画面を開きます', 'err');
+    window.print();
+  }
+}
+function showPrintOverlay(html) {
+  const ov = document.createElement('div');
+  ov.className = 'po-ov';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(30,30,35,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = `<div class="po-box" style="background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;text-align:center;">${html}</div>`;
+  document.body.appendChild(ov);
+  return ov;
+}
+function openPrintPdf() {
+  if (!_printPdf) return;
+  const w = window.open(_printPdf.url, '_blank');
+  if (!w) downloadPrintPdf();
+}
+async function sharePrintPdf() {
+  if (!_printPdf) return;
+  try { await navigator.share({ files: [new File([_printPdf.blob], _printPdf.name, { type: 'application/pdf' })], title: _printPdf.name }); }
+  catch (e) { if (e.name !== 'AbortError') downloadPrintPdf(); }
+}
+function downloadPrintPdf() {
+  if (!_printPdf) return;
+  const a = document.createElement('a'); a.href = _printPdf.url; a.download = _printPdf.name;
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 // サイズ欄の下の印（刻み・アレルギー）。調理画面と同じ数え方
@@ -2767,6 +2854,8 @@ function fillForm(d) {
   document.getElementById('dr').value   = d.dinner?.r ||0;
   document.getElementById('dl').value   = d.dinner?.l ||0;
   document.getElementById('dtap').value = d.dinner?.t ||0;
+  document.getElementById('ltr').value  = d.trial?.lunch  || 0;
+  document.getElementById('dtr').value  = d.trial?.dinner || 0;
   document.getElementById('chk-irregular').checked = !!d.irregular;
   const f = document.getElementById('f-facility').value;
   applyTapperMode(f); applyPrices(f);
@@ -2811,7 +2900,7 @@ function clearSpecial() {
   ['k-ls','k-lr','k-ll','k-ds','k-dr','k-dl','o-ls','o-lr','o-ll','o-ds','o-dr','o-dl'].forEach(id => document.getElementById(id).value = 0);
 }
 function clearForm() {
-  ['ls','lr','ll','ltap','ds','dr','dl','dtap'].forEach(id => document.getElementById(id).value=0);
+  ['ls','lr','ll','ltap','ds','dr','dl','dtap','ltr','dtr'].forEach(id => { const e = document.getElementById(id); if (e) e.value = 0; });
   document.getElementById('chk-irregular').checked = false;
   const f = document.getElementById('f-facility').value;
   applyTapperMode(f);
@@ -2945,6 +3034,7 @@ function getFormEntry() {
     lunch:  {s:nv('ls'),r:nv('lr'),l:nv('ll'), ...(irreg?{t:nv('ltap')}:{})},
     dinner: {s:nv('ds'),r:nv('dr'),l:nv('dl'), ...(irreg?{t:nv('dtap')}:{})},
     ...(irreg ? {irregular:true} : {}),
+    ...((nv('ltr') || nv('dtr')) ? { trial: { lunch: nv('ltr'), dinner: nv('dtr') } } : {}),
     specialItems: si,
     savedAt: new Date().toISOString()
   };
@@ -2955,6 +3045,7 @@ function submitOrder() {
   if (!f)    { toast('事業所を選択してください','ng'); return; }
   if (!date) { toast('日付を選択してください','ng');   return; }
   if (getOrders()[date]?.[f]) { toast('この事業所・日付はすでに注文済みです','ng'); return; }
+  if (nv('ltr') > nv('ls')+nv('lr')+nv('ll')+nv('ltap') || nv('dtr') > nv('ds')+nv('dr')+nv('dl')+nv('dtap')) { toast('体験利用の数が、注文数より多くなっています','ng'); return; }
   // メンバー別フォームモード → モーダルなしで当日のみ保存
   if (isMorMode()) {
     const entry = getMorEntry();
@@ -3652,6 +3743,10 @@ function updateMemberSize(f, id, meal, val) {
   m.sizeHistory = m.sizeHistory.filter(e => e.from !== from);
   m.sizeHistory.push({ lunchSize: m.lunchSize||'r', dinnerSize: m.dinnerSize||'r', dinnerCount: m.dinnerCount||1, from });
   toast(`${m.name||''}：${fmtDate(from)}から反映します`, 'ok');
+  const mealJp = meal === 'lunch' ? '☀️昼食のサイズ' : meal === 'dinner' ? '🌙夕食のサイズ' : '🌙夕食の個数';
+  const before = meal === 'lunch' ? SZ_JP[prevSize.lunchSize] : meal === 'dinner' ? SZ_JP[prevSize.dinnerSize] : '×' + prevSize.dinnerCount;
+  const after  = meal === 'lunch' ? SZ_JP[val || ''] : meal === 'dinner' ? SZ_JP[val || ''] : '×' + (parseInt(val) || 1);
+  notifyTmplChange(f, `🍱 ${m.name || ''}：${mealJp} ${before} → ${after}（${fmtDate(from)}から）`);
   saveMembers(members);
   if (meal === 'dinnerCount') renderSettings();
 }
@@ -3672,6 +3767,8 @@ function openCorrection(f, date) {
   document.getElementById('mc-dr').value = entry.dinner?.r ||0;
   document.getElementById('mc-dl').value = entry.dinner?.l ||0;
   document.getElementById('mc-allergy').value = specialItemsToText(entry.specialItems) || entry.allergy||'';
+  document.getElementById('mc-ltr').value = entry.trial?.lunch  || 0;
+  document.getElementById('mc-dtr').value = entry.trial?.dinner || 0;
   mcCalc();
   document.getElementById('modal-correct').classList.add('show');
 }
@@ -3690,12 +3787,17 @@ function mcCalc() {
 function saveCorrection() {
   if (!correctCtx) return;
   const {f,date}=correctCtx;
+  // 数と体験利用だけ書き換え、それ以外（メンバーのキャンセル・イレギュラー・タッパー数・特記事項）は残す
+  const prev = getOrders()[date]?.[f] || {};
   const entry={
-    lunch:  {s:nv('mc-ls'),r:nv('mc-lr'),l:nv('mc-ll')},
-    dinner: {s:nv('mc-ds'),r:nv('mc-dr'),l:nv('mc-dl')},
-    specialItems: getOrders()[correctCtx.date]?.[correctCtx.f]?.specialItems || {},
+    ...prev,
+    lunch:  {...(prev.lunch  || {}), s:nv('mc-ls'), r:nv('mc-lr'), l:nv('mc-ll')},
+    dinner: {...(prev.dinner || {}), s:nv('mc-ds'), r:nv('mc-dr'), l:nv('mc-dl')},
+    specialItems: prev.specialItems || {},
     savedAt: new Date().toISOString(), corrected: true
   };
+  if (nv('mc-ltr') || nv('mc-dtr')) entry.trial = { lunch: nv('mc-ltr'), dinner: nv('mc-dtr') }; else delete entry.trial;
+  if ((entry.trial?.lunch||0) > lT(entry) || (entry.trial?.dinner||0) > dT(entry)) { toast('体験利用の数が、注文数より多くなっています','ng'); return; }
   if (lT(entry)+dT(entry)===0) {
     if (!confirm(`${f}（${date}）の注文をすべて0件で訂正します。よろしいですか？`)) return;
   }
@@ -3987,6 +4089,8 @@ function renderMonthly() {
             </tr></tfoot>
           </table>
         </div>
+        <div style="font-size:14px;font-weight:700;margin:12px 0 8px;">💴 ${esc(f)}　メンバーごとの金額</div>
+        ${(() => { const b = getMemberBilling(f, ym); return b.length ? billingTableHtml(b, '名前') : '<p style="color:var(--muted);font-size:13px;">この月の注文はありません</p>'; })()}
       </div>`;
     }).join('');
 
@@ -4029,6 +4133,8 @@ function renderMonthly() {
     el.innerHTML=`${summHtml}
       <h3 style="margin-bottom:10px;">💴 金額</h3>
       ${billingTableHtml(getFacilityBilling(items), '事業所')}
+      ${(() => { const t = getTrialSummary(items)[0]; return t ? `<div style="margin:-8px 0 16px;font-size:13px;font-weight:700;color:#9a5524;">🔰 うち体験利用：昼 ${t.lunch}食・夕 ${t.dinner}食</div>` : ''; })()}
+      ${isMemberManaged(fac) ? `<h3 style="margin-bottom:10px;">💴 メンバーごとの金額</h3>${billingTableHtml(getMemberBilling(fac, ym), '名前')}` : ''}
       <h3 style="margin-bottom:10px;">日別</h3>
       <div class="month-tbl-wrap">
         <table class="month-tbl">
@@ -4171,7 +4277,9 @@ function renderMonthly() {
       </div>
       <h3 style="margin-bottom:10px;">💴 金額（事業所ごと）</h3>
       ${facBill.length ? billingTableHtml(facBill, '事業所') : '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;">事業所の注文はありません</p>'}
-      ${poBill.length ? `<h3 style="margin-bottom:10px;">💴 金額（個人注文）</h3>${billingTableHtml(poBill, '名前')}` : ''}`;
+      ${poBill.length ? `<h3 style="margin-bottom:10px;">💴 金額（個人注文）</h3>${billingTableHtml(poBill, '名前')}` : ''}
+      <h3 style="margin-bottom:10px;">🔰 体験利用の食数（事業所ごと）</h3>
+      ${trialTableHtml(getTrialSummary(allItems))}`;
 
     el.innerHTML=`${summHtml}${moneyHtml}
       <h3 style="margin-bottom:10px;margin-top:4px;">事業所別 月間集計</h3>
@@ -4318,6 +4426,18 @@ function exportCSV() {
         return `"夕${t.dinner}食${t.cancel?'/✕'+t.cancel:''}"`;
       });
       csvBlocks.push(['"合計"', ...totalCells].join(','));
+      // メンバーごとの金額（経理用）
+      const bill = getMemberBilling(f, ym);
+      if (bill.length) {
+        csvBlocks.push('');
+        csvBlocks.push(`"【${f}】メンバーごとの金額"`);
+        csvBlocks.push('"名前","内容","数量","単価","金額"');
+        bill.forEach(g => {
+          g.items.forEach(it => csvBlocks.push([`"${g.name}${g.sub ? '（体験）' : ''}"`, `"${it.label}"`, it.qty, it.unit, it.unit * it.qty].join(',')));
+          csvBlocks.push([`"${g.name}"`, '"小計"', g.qty, '', g.amount].join(','));
+        });
+        csvBlocks.push(['"合計"', '""', bill.reduce((a,g)=>a+g.qty,0), '', bill.reduce((a,g)=>a+g.amount,0)].join(','));
+      }
       csvBlocks.push('');
     });
     const csv = '﻿' + csvBlocks.join('\n');
@@ -4567,9 +4687,12 @@ function renderSettings() {
         const lSize = m.lunchSize||'', dSize = m.dinnerSize||'';
         const disp = dispNames[id] || m.name || id;
         const todaySusp = (m.suspensions||[]).find(s => getTodayStr() >= s.from && getTodayStr() <= s.to);
-        const suspBadge = todaySusp
+        const suspBadge = (todaySusp
           ? `<span style="font-size:11px;color:#b8473a;background:#f6e1dc;padding:1px 6px;border-radius:5px;">🏥${todaySusp.reason}</span>`
-          : '';
+          : '')
+          + (m.entryDate && m.entryDate > getTodayStr()
+            ? `<span style="font-size:11px;color:#3f6b45;background:#e4efe3;padding:1px 7px;border-radius:999px;margin-left:4px;">🌱 ${fmtDate(m.entryDate)}〜入所予定</span>` : '')
+          + (m.trial ? `<span style="font-size:11px;color:#9a5524;background:#f8e7d6;padding:1px 7px;border-radius:999px;margin-left:4px;">🔰 体験</span>` : '');
         const sOpts = ['','s','r','l'];
         const sLbls = ['なし','半盛','普通','大盛'];
         const lunchSizeRow = servesLunch ? `
@@ -4594,14 +4717,17 @@ function renderSettings() {
         const suspList = (m.suspensions||[]).length
           ? (m.suspensions||[]).map((s,i) => {
               const lbl = s.from===s.to ? fmtDate(s.from) : `${fmtDate(s.from)}〜${fmtDate(s.to)}`;
-              return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span style="font-size:11px;flex:1;">${s.reason}　${lbl}</span><button onclick="removeMemberSusp('${f}','${id}',${i})" style="border:none;background:none;cursor:pointer;color:var(--muted);">✕</button></div>`;
+              return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span style="font-size:12px;flex:1;background:#f3f4f6;padding:4px 8px;border-radius:5px;">${s.reason}　${lbl}</span><button onclick="removeMemberSusp('${f}','${id}',${i})" style="font-size:12px;padding:4px 10px;border:1.5px solid #ecc9c2;border-radius:6px;background:white;cursor:pointer;color:#b8473a;font-family:inherit;">✕ 取り消す</button></div>`;
             }).join('')
           : '<span style="font-size:11px;color:var(--muted);">なし</span>';
-        const detailPanel = `<div id="suspform-${f}-${id}" style="display:none;margin-top:6px;padding:10px 12px;background:#faf8f5;border-radius:8px;border:1px solid var(--border);">
+        const detailPanel = `<div id="suspform-${f}-${id}" style="display:${window._openSuspForms?.has(f+'-'+id)?'block':'none'};margin-top:6px;padding:10px 12px;background:#faf8f5;border-radius:8px;border:1px solid var(--border);">
           <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">サイズ・食数</div>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
             ${lunchSizeRow}${dinnerSizeRow}
           </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:#9a5524;cursor:pointer;margin:0 0 10px;">
+            <input type="checkbox" ${m.trial?'checked':''} onchange="setMemberTrial('${f}','${id}',this.checked)" style="width:15px;height:15px;"> 🔰 体験利用の人
+          </label>
           <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">一時停止</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
             <select id="sr-${f}-${id}" style="border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;">
@@ -4627,7 +4753,7 @@ function renderSettings() {
             <span style="font-size:14px;font-weight:600;flex:1;${todaySusp?'color:var(--muted);':''}">${esc(disp)}${suspBadge}</span>
             ${(servesLunch && lSize) ? `<span style="font-size:11px;color:#8f5c17;padding:0 4px;">☀️${sizeLabel[lSize]}</span>` : ''}
             ${servesDinner ? `<span style="font-size:11px;color:#6d28d9;padding:0 4px;">🌙${dSize?sizeLabel[dSize]:'−'}${(m.dinnerCount||1)>1?`×${m.dinnerCount||1}`:''}</span>` : ''}
-            <button onclick="const p=document.getElementById('suspform-${f}-${id}');p.style.display=p.style.display==='none'?'block':'none'" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--muted);flex-shrink:0;">変更▼</button>
+            <button onclick="const p=document.getElementById('suspform-${f}-${id}');const k='${f}-${id}';window._openSuspForms=window._openSuspForms||new Set();if(p.style.display==='none'){p.style.display='block';window._openSuspForms.add(k);}else{p.style.display='none';window._openSuspForms.delete(k);}" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--muted);flex-shrink:0;">変更▼</button>
           </div>
           ${detailPanel}
         </div>`;
@@ -4670,6 +4796,9 @@ function renderSettings() {
                 <option value="1" selected>×1</option><option value="2">×2</option><option value="3">×3</option>
               </select>
             </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;color:#9a5524;cursor:pointer;margin:0;">
+              <input type="checkbox" id="nm-trial-${f}" style="width:16px;height:16px;"> 🔰 体験利用の人
+            </label>
             <button class="btn btn-primary btn-sm" style="align-self:flex-start;" onclick="addNewMemberFromTemplate('${f}')">追加する</button>
           </div>
         </details>
@@ -4756,12 +4885,12 @@ function getFacilityDay(f, date) {
     const mt = calcMemberTotals(f, paused, date, ovs);
     return { ...(tmpl || {}), ...(ent || {}), lunch: mt.lunch, dinner: mt.dinner,
       _type: hasEntry ? 'override' : 'tmpl', _noDays: !tmpl?.days, _kizami: mt.kizami,
-      _memberAllergies: mt.allergies, _tags: mt.tags, _fromTemplate: !hasEntry };
+      _memberAllergies: mt.allergies, _tags: mt.tags, _trial: mt.trial, _fromTemplate: !hasEntry };
   }
   if (hasEntry) {
     const isOverride = tmpl && REPEAT_SET.has(f) &&
       JSON.stringify({ l: ent.lunch, d: ent.dinner }) !== JSON.stringify({ l: tmpl.lunch, d: tmpl.dinner });
-    return { ...ent, _type: REPEAT_SET.has(f) ? (isOverride ? 'override' : 'manual') : 'manual' };
+    return { ...ent, _trial: ent.trial || null, _type: REPEAT_SET.has(f) ? (isOverride ? 'override' : 'manual') : 'manual' };
   }
   if (!scheduled) return null;
   const lunch  = t.serves_lunch  !== false ? { ...(t.lunch  || { s:0, r:0, l:0 }) } : { s:0, r:0, l:0 };
@@ -4780,7 +4909,8 @@ function calcMemberTotals(f, paused, forDate, ovs) {
     dinner: { s:0, r:0, l:0 },
     kizami: { lunch:{s:0,r:0,l:0}, dinner:{s:0,r:0,l:0} },
     allergies: [], // [{name, detail}]
-    tags: { lunch:{s:{},r:{},l:{}}, dinner:{s:{},r:{},l:{}} }
+    tags: { lunch:{s:{},r:{},l:{}}, dinner:{s:{},r:{},l:{}} },
+    trial: { lunch: 0, dinner: 0 }
   };
   Object.entries(fMembers).forEach(([id, m]) => {
     if (paused[id]) return;
@@ -4802,6 +4932,10 @@ function calcMemberTotals(f, paused, forDate, ovs) {
     if (m.allergy?.enabled && m.allergy?.detail) {
       totals.allergies.push({ name: m.name || id, detail: m.allergy.detail,
         lunch: servesLunch ? ls : '', dinner: servesDinner ? ds : '', dc });
+    }
+    if (m.trial) {
+      if (servesLunch  && ls) totals.trial.lunch++;
+      if (servesDinner && ds) totals.trial.dinner += dc;
     }
     // サイズ欄の下に出す印（同じ人の刻み＋アレルギーは「刻+魚」とまとめる）
     const alg = (m.allergy?.enabled && m.allergy?.detail) ? m.allergy.detail : '';
@@ -4851,6 +4985,7 @@ function saveTemplateFromMembers(f) {
   t[f] = { ...t[f], ...snapshot };
   saveTemplates(t);
   renderSettings();
+  notifyTmplChange(f, `📅 定期注文を更新（${fmtDate(fromDate)}から）：注文曜日 ${days.map(i => '日月火水木金土'[i]).join('・')}／☀️昼食${servesLunch ? 'あり' : 'なし'}・🌙夕食${servesDinner ? 'あり' : 'なし'}`);
   toast(`${f} の定期注文を保存しました（${fromDate}〜） ✓`, 'ok');
 }
 
@@ -4933,6 +5068,23 @@ function renderSuspensions(f, suspensions) {
   </div>`;
 }
 
+// 定期注文フォームの変更をSlackへ（GASのURLが未設定なら何もしない）
+const SZ_JP = { s:'半盛', r:'普通', l:'大盛', '':'なし' };
+function notifyTmplChange(f, text) {
+  const at = new Date().toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  notifySlack(`🍱【定期注文の変更】${f}\n${text}\n（${at} 変更）`);
+}
+function setMemberTrial(f, id, on) {
+  const members = JSON.parse(JSON.stringify(getMembers()));
+  if (!members[f]?.[id]) return;
+  if (on) members[f][id].trial = true; else delete members[f][id].trial;
+  saveMembers(members);
+  renderSettings();
+  const name = members[f][id].name || id;
+  notifyTmplChange(f, `🔰 ${name}：体験利用${on ? 'に設定' : 'を解除'}`);
+  toast(`${name}：体験利用${on ? 'に設定しました' : 'を解除しました'}`, 'ok');
+}
+
 function addNewMemberFromTemplate(f) {
   const nameEl  = document.getElementById(`nm-name-${f}`);
   const lunchEl = document.getElementById(`nm-lunch-${f}`);
@@ -4947,11 +5099,13 @@ function addNewMemberFromTemplate(f) {
   const entryDate = entryEl?.value || firstEditableDate();
   if (isPersonalDateLocked(entryDate)) { toast(LOCK_MSG + '（入所日を変更してください）', 'ng'); return; }
   const dinnerCount = parseInt(dcEl?.value||'1') || 1;
-  members[f][id] = { name, lunchSize: lunchEl?.value||'', dinnerSize: dinnerEl?.value||'', dinnerCount, entryDate };
+  const trial = !!document.getElementById(`nm-trial-${f}`)?.checked;
+  members[f][id] = { name, lunchSize: lunchEl?.value||'', dinnerSize: dinnerEl?.value||'', dinnerCount, entryDate, ...(trial ? { trial: true } : {}) };
   saveMembers(members);
   if (nameEl) nameEl.value = '';
   renderSettings();
   const ed = entryDate.replace(/^(\d{4})-(\d{2})-(\d{2})$/,(_,y,mo,d)=>`${parseInt(mo)}月${parseInt(d)}日`);
+  notifyTmplChange(f, `🆕 新しいメンバー：${name}（${ed}入所${trial ? '・🔰体験' : ''}／🌙夕食 ${SZ_JP[dinnerEl?.value || '']}${dinnerCount > 1 ? '×' + dinnerCount : ''}）`);
   toast(`${name} を ${f} に追加しました ✓（入所日：${ed}）`, 'ok');
 }
 
@@ -4966,6 +5120,7 @@ function dischargeMemember(f, id) {
   const name = members[f][id].name || id;
   const ed = exitDate.replace(/^(\d{4})-(\d{2})-(\d{2})$/,(_,y,mo,d)=>`${parseInt(mo)}月${parseInt(d)}日`);
   const isFuture = exitDate > getTodayStr();
+  notifyTmplChange(f, `🚪 ${name}：${ed}で退所`);
   toast(`${name}：${ed}に退所${isFuture?' （それまでは注文に含まれます）':''}`, 'ok');
 }
 
@@ -4976,6 +5131,7 @@ function reinstateMemember(f, id) {
   members[f][id].entryDate = getTodayStr();
   saveMembers(members);
   renderSettings();
+  notifyTmplChange(f, `↩️ ${members[f][id].name || id}：再入所`);
   toast(`${members[f][id].name || id} を再入所にしました ✓`, 'ok');
 }
 
@@ -4993,14 +5149,17 @@ function addMemberSusp(f, id) {
   saveMembers(members);
   renderSettings();
   const label = from===to ? fmtDate(from) : `${fmtDate(from)}〜${fmtDate(to)}`;
+  notifyTmplChange(f, `🏥 ${members[f][id].name}：お休み（${reason}）${label}`);
   toast(`${members[f][id].name}：${reason} ${label} を登録しました`, 'ok');
 }
 
 function removeMemberSusp(f, id, idx) {
   const members = JSON.parse(JSON.stringify(getMembers()));
   if (!members[f]?.[id]?.suspensions) return;
+  const sOld = members[f][id].suspensions[idx];
   if (!trimSuspension(members[f][id].suspensions, idx)) return;
   saveMembers(members);
+  if (sOld) notifyTmplChange(f, `🔄 ${members[f][id].name}：お休み（${sOld.reason || ''}）${sOld.from === sOld.to ? fmtDate(sOld.from) : fmtDate(sOld.from) + '〜' + fmtDate(sOld.to)} を取り消し`);
   renderSettings();
   toast('一時停止を削除しました', 'ok');
 }
@@ -5031,14 +5190,17 @@ function addSuspension(f) {
   saveTemplates(t);
   renderSettings();
   const label = from===to ? `${from.replace(/^(\d{4})-(\d{2})-(\d{2})$/,(_,y,mo,d)=>`${parseInt(mo)}月${parseInt(d)}日`)}` : `${from}〜${to}`;
+  notifyTmplChange(f, `🚫 施設全体の休止：${label}`);
   toast(`🚫 ${f}：${label} を休止に設定`, 'ok');
 }
 
 function removeSuspension(f, idx) {
   const t = getTemplates();
   if (!t[f]?.suspensions) return;
+  const sOld = t[f].suspensions[idx];
   if (!trimSuspension(t[f].suspensions, idx)) return;
   saveTemplates(t);
+  if (sOld) notifyTmplChange(f, `🔄 施設全体の休止（${sOld.from === sOld.to ? fmtDate(sOld.from) : fmtDate(sOld.from) + '〜' + fmtDate(sOld.to)}）を取り消し`);
   renderSettings();
   toast(`休止日を削除しました`, 'ok');
 }
@@ -5066,6 +5228,7 @@ function saveTemplate(f) {
   t[f]={...t[f], ...snapshot};
   saveTemplates(t);
   renderSettings();
+  notifyTmplChange(f, `📅 定期注文を更新（${fmtDate(fromDate)}から）：注文曜日 ${days.map(i => '日月火水木金土'[i]).join('・')}／☀️昼 半盛${ls}・普通${lr}・大盛${ll}／🌙夕 半盛${ds}・普通${dr}・大盛${dl}`);
   toast(`${f} の定期注文を保存しました（${fromDate}〜） ✓`,'ok');
 }
 function confirmReset(f) {
@@ -5193,6 +5356,66 @@ function getFacilityBilling(items) {
   return FACILITIES.filter(f => byFac[f]?.qty).map(f => ({
     ...byFac[f], items: Object.values(byFac[f].rows).sort((a,b) => mealOrder(a.label)-mealOrder(b.label) || a.order-b.order)
   }));
+}
+
+// 月次：体験利用の食数（事業所ごと）
+function getTrialSummary(items) {
+  const by = {};
+  items.forEach(it => {
+    const t = it._trial; if (!t) return;
+    const g = by[it.f] || (by[it.f] = { lunch: 0, dinner: 0 });
+    g.lunch += t.lunch || 0; g.dinner += t.dinner || 0;
+  });
+  return FACILITIES.filter(f => by[f] && (by[f].lunch || by[f].dinner)).map(f => ({ f, ...by[f] }));
+}
+function trialTableHtml(rows) {
+  if (!rows.length) return '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;">この月の体験利用はありません</p>';
+  const sL = rows.reduce((a,r)=>a+r.lunch,0), sD = rows.reduce((a,r)=>a+r.dinner,0);
+  return `<div class="month-tbl-wrap" style="margin-bottom:20px;"><table class="month-tbl">
+    <thead><tr><th style="text-align:left;">事業所</th><th>☀️ 昼</th><th>🌙 夕</th><th>計</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td style="text-align:left;font-weight:700;">${esc(r.f)}</td><td>${r.lunch||'−'}</td><td>${r.dinner||'−'}</td><td style="font-weight:700;">${r.lunch+r.dinner}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>合計</td><td>${sL}</td><td>${sD}</td><td>${sL+sD}</td></tr></tfoot>
+  </table></div>`;
+}
+
+// 月次：GHメンバーごとの「内容×数量×単価＝金額」（調理画面と同じ数え方）
+function getMemberBilling(f, ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const lastD = new Date(y, m, 0).getDate();
+  const fMembers = getMembers()[f] || {};
+  const p = getPrices(), misoP = p.misoPrice || 0;
+  const SZ = { s:'半盛', r:'普通', l:'大盛' };
+  const by = {};
+  for (let d = 1; d <= lastD; d++) {
+    const date = `${ym}-${String(d).padStart(2,'0')}`;
+    if (!getFacilityDay(f, date)) continue;
+    const tmpl = getTemplateForDate(f, date) || {};
+    const ovs = getOrders()[date]?.[f]?.members || {};
+    Object.entries(fMembers).forEach(([id, mm]) => {
+      if (ovs[id]?.cancelled) return;
+      if (mm.exitDate && date >= mm.exitDate) return;
+      if (mm.entryDate && date < mm.entryDate) return;
+      if ((mm.suspensions || []).some(s => date >= s.from && date <= s.to)) return;
+      const sz = getMemberSizeForDate(mm, date);
+      const ov = ovs[id] || {};
+      [['lunch','昼', tmpl.serves_lunch !== false], ['dinner','夕', tmpl.serves_dinner !== false]].forEach(([meal, ml, on]) => {
+        if (!on) return;
+        const size = (ov[meal] !== undefined ? ov[meal] : (meal === 'lunch' ? sz.lunchSize : sz.dinnerSize)) || '';
+        if (!size) return;
+        const qty = meal === 'dinner' ? (sz.dinnerCount || 1) : 1;
+        const tap = isTapper(f, meal), miso = isMiso(f, meal) ? misoP : 0;
+        const unit = (tap ? (getPrice(meal, 'tapper') || 0) : (getPrice(meal, size) || 0)) + miso;
+        const label = `${ml}・${tap ? 'タッパー' : SZ[size]}${miso ? '（味噌汁付）' : ''}`;
+        const g = by[id] || (by[id] = { name: mm.name || id, sub: mm.trial ? '🔰 体験' : '', rows: {}, qty: 0, amount: 0 });
+        const k = label + unit;
+        const r = g.rows[k] || (g.rows[k] = { label, unit, qty: 0, ml });
+        r.qty += qty; g.qty += qty; g.amount += qty * unit;
+      });
+    });
+  }
+  const order = Object.keys(fMembers);
+  return Object.entries(by).sort((a,b) => order.indexOf(a[0]) - order.indexOf(b[0]))
+    .map(([, g]) => ({ ...g, items: Object.values(g.rows).sort((a,b) => (a.ml === b.ml ? 0 : a.ml === '昼' ? -1 : 1)) }));
 }
 
 // 金額表（数量 × 単価 ＝ 金額）。groups: [{name, sub?, items:[{label,qty,unit}], qty, amount}]
@@ -5755,9 +5978,12 @@ function renderPersonalScheduleForm() {
 function notifySlack(text) {
   const url = getGasUrl();
   if (!url) return; // 未設定なら何もしない
+  // GASのウェブアプリは事前確認（CORSのプリフライト）に答えられないため、text/plain の no-cors で送る。
+  // GAS側は e.postData.contents をJSONとして読むので中身はそのままでよい
   fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ text })
   }).catch(() => {}); // エラーは黙って無視（通知失敗で業務を止めない）
 }
