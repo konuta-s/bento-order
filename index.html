@@ -510,7 +510,8 @@
   /* ── 印刷1枚目：調理表（画面では非表示。印刷時は画面の調理用パネルの代わりに出す） ── */
   #print-cook { display: none; }
   body.is-printing.pk-on #admin-sub-admin { display: none !important; }
-  body.is-printing #print-cook:not(:empty) { display: block; background: #fff; color: #2b2d33; }
+  body.is-printing #print-cook:not(:empty) { display: block; page: checklist; background: #fff; color: #2b2d33; }
+  body.is-printing.pk-on #page-admin { page: checklist; }
   .pk-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
   .pk-title { font-size: 22px; font-weight: 700; white-space: nowrap; }
   .pk-title span { font-size: 18px; margin-left: 6px; }
@@ -540,7 +541,7 @@
   .pk-nh { grid-column: 1 / -1; font-weight: 700; color: #9e3a2c; font-size: 13px; }
   .pk-nt { font-size: 14px; }
   .pk-nt .pk-al { color: #9e3a2c; font-weight: 700; }
-  .pk-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .pk-tbl { width: 100%; min-width: 0 !important; border-collapse: collapse; table-layout: fixed; }
   .pk-tbl th, .pk-tbl td { border: 1.5px solid #8d877d; text-align: center; padding: 3px 4px; }
   .pk-fh { background: #3e4757; color: #fff; font-size: 14px; width: 17%; }
   .pk-mh { color: #fff; font-size: 16px; padding: 4px; }
@@ -2304,7 +2305,7 @@ async function printAdmin() {
     document.body.classList.toggle('pk-on', pkOn);
     // [要素, 向き, 余白mm, 撮影時の幅px]
     const pages = [
-      [pkOn ? document.getElementById('print-cook') : document.getElementById('admin-sub-admin'), 'landscape', 8, PRINT_W],
+      [pkOn ? document.getElementById('print-cook') : document.getElementById('admin-sub-admin'), 'portrait', 10, PRINT_W],
       [document.getElementById('print-personal'), 'portrait', 10, 700],
       [document.getElementById('print-checklist'), 'portrait', 10, 700],
     ].filter(([el]) => el && el.innerHTML.trim());
@@ -2549,7 +2550,7 @@ function renderPickupChecklist(date, merged, poToday) {
 }
 
 // 調理用画面の印刷：A4横（余白8mm）の1枚に収まるよう縮小する
-const PRINT_W = 1060, PRINT_H = 715; // A4横の印刷範囲（CSSピクセル）
+const PRINT_W = 720, PRINT_H = 1020; // A4縦の印刷範囲（CSSピクセル）
 function fitCookingPrint() {
   const panel = document.getElementById('admin-sub-admin');
   const isCook = document.getElementById('page-admin')?.classList.contains('active') && panel && panel.style.display !== 'none';
